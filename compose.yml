@@ -2,7 +2,7 @@ services:
   token-burn:
     build: .
     ports:
-      - "${TOKEN_BURN_PORT:-8000}:8000"
+      - "${TOKEN_BURN_PORT:-8574}:8000"
     environment:
       ADMIN_USERNAME: "${ADMIN_USERNAME:-admin}"
       ADMIN_PASSWORD: "${ADMIN_PASSWORD:-change-me}"

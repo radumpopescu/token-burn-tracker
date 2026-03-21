@@ -20,7 +20,7 @@ The app polls those endpoints on a schedule, deduplicates unchanged results, sto
 docker compose up --build
 ```
 
-The app listens on port `8000` by default through [`compose.yml`](/Users/radu/Developer/token-burn/compose.yml).
+The app listens on external port `8574` by default through [`compose.yml`](/Users/radu/Developer/token-burn/compose.yml). The container still serves on internal port `8000`.
 
 ### Useful environment variables
 
@@ -39,7 +39,7 @@ python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().
 
 ## Initial setup
 
-1. Start the app and open `http://localhost:8000/settings`.
+1. Start the app and open `http://localhost:8574/settings`.
 2. In browser devtools on Claude, copy the `Cookie` header from the `GET /api/organizations/<org-id>/usage` request.
 3. In browser devtools on ChatGPT, copy the `Cookie` header from the `GET /backend-api/wham/usage` request.
 4. Paste each cookie into the matching provider form, save, and run a manual poll.
