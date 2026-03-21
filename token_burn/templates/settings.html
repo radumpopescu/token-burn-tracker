@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token Burn Settings</title>
+    <style>
+        :root {
+            --bg: #09111b;
+            --panel: #0f1d2f;
+            --panel-2: #152741;
+            --line: #223957;
+            --text: #f4f7fb;
+            --muted: #90a5c3;
+            --accent: #ff7a18;
+            --ok: #39d69a;
+            --warn: #ffd166;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(255, 122, 24, 0.18), transparent 24%),
+                radial-gradient(circle at bottom right, rgba(49, 196, 255, 0.16), transparent 22%),
+                linear-gradient(180deg, #09111b, #08111a);
+            color: var(--text);
+        }
+        .page {
+            max-width: 1160px;
+            margin: 0 auto;
+            padding: 28px 18px 44px;
+        }
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+        .topbar h1 {
+            margin: 0;
+            font-size: clamp(2rem, 3vw, 2.8rem);
+            letter-spacing: -0.03em;
+        }
+        .topbar p {
+            margin: 10px 0 0;
+            color: var(--muted);
+            max-width: 62ch;
+        }
+        .link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 42px;
+            padding: 0 14px;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            background: rgba(255,255,255,0.03);
+            color: var(--text);
+            text-decoration: none;
+        }
+        .banner {
+            margin-bottom: 20px;
+            padding: 14px 16px;
+            border-radius: 16px;
+            border: 1px solid var(--line);
+            background: rgba(255,255,255,0.04);
+            color: var(--muted);
+        }
+        .banner strong { color: var(--text); }
+        .grid {
+            display: grid;
+            gap: 18px;
+        }
+        .panel {
+            background: rgba(15, 29, 47, 0.9);
+            border: 1px solid var(--line);
+            border-radius: 22px;
+            padding: 20px;
+        }
+        .panel h2, .panel h3 {
+            margin: 0 0 8px;
+        }
+        .panel p {
+            margin: 0 0 18px;
+            color: var(--muted);
+        }
+        form {
+            display: grid;
+            gap: 16px;
+        }
+        .fields {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+        .field {
+            display: grid;
+            gap: 8px;
+        }
+        .field.full { grid-column: 1 / -1; }
+        label {
+            color: var(--muted);
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        input, select, textarea, button {
+            border-radius: 14px;
+            border: 1px solid var(--line);
+            background: var(--panel-2);
+            color: var(--text);
+            padding: 12px 14px;
+            font: inherit;
+        }
+        textarea {
+            min-height: 130px;
+            resize: vertical;
+            font-family: "SF Mono", "Fira Code", monospace;
+            font-size: 0.87rem;
+            line-height: 1.4;
+        }
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        button {
+            cursor: pointer;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), #ff9f45);
+            color: #1d1005;
+            border-color: rgba(255, 122, 24, 0.5);
+        }
+        .ghost {
+            background: rgba(255,255,255,0.04);
+            color: var(--text);
+            border-color: var(--line);
+        }
+        .meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.08);
+            padding: 7px 11px;
+            font-size: 0.82rem;
+            color: var(--muted);
+            background: rgba(255,255,255,0.04);
+        }
+        .hint {
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: rgba(255,255,255,0.03);
+            border: 1px dashed rgba(255,255,255,0.12);
+            color: var(--muted);
+            line-height: 1.5;
+        }
+        .ok { color: var(--ok); }
+        .warn { color: var(--warn); }
+        @media (max-width: 860px) {
+            .fields { grid-template-columns: 1fr; }
+            .topbar { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <section class="topbar">
+            <div>
+                <h1>Settings</h1>
+                <p>Paste the Cookie headers for the direct usage endpoints and the app will reuse them from SQLite on every poll. Nothing browser-driven runs on the server.</p>
+            </div>
+            <a class="link" href="/">Back to dashboard</a>
+        </section>
+
+        {% if notice %}
+        <div class="banner"><strong>Status:</strong> {{ notice.replace("-", " ") }}</div>
+        {% endif %}
+
+        <div class="banner">
+            <strong>Security:</strong>
+            {% if admin_auth_enabled %}
+            admin auth is enabled.
+            {% else %}
+            <span class="warn">admin auth is disabled because `ADMIN_PASSWORD` is not set.</span>
+            {% endif %}
+            {% if encryption_enabled %}
+            Secrets are encrypted at rest.
+            {% else %}
+            <span class="warn">Secrets are stored obfuscated, not encrypted, because `APP_ENCRYPTION_KEY` is not set.</span>
+            {% endif %}
+        </div>
+
+        <section class="panel">
+            <h2>Polling</h2>
+            <p>Check frequently, write only on changes, and still keep periodic heartbeats in SQLite so charts stay anchored over time.</p>
+            <form action="/settings/app" method="post">
+                <div class="fields">
+                    <div class="field">
+                        <label for="poll_interval_seconds">Poll interval seconds</label>
+                        <input id="poll_interval_seconds" name="poll_interval_seconds" type="number" min="60" value="{{ settings.get('poll_interval_seconds', '300') }}">
+                    </div>
+                    <div class="field">
+                        <label for="heartbeat_interval_seconds">Heartbeat interval seconds</label>
+                        <input id="heartbeat_interval_seconds" name="heartbeat_interval_seconds" type="number" min="300" value="{{ settings.get('heartbeat_interval_seconds', '3600') }}">
+                    </div>
+                </div>
+                <div class="actions">
+                    <button type="submit">Save app settings</button>
+                </div>
+            </form>
+        </section>
+
+        <div class="grid">
+            {% for spec in provider_specs %}
+            {% set config = configs.get(spec.provider) %}
+            {% set state = states.get(spec.provider, {}) %}
+            <section class="panel">
+                <h2>{{ spec.display_name }}</h2>
+                <p>{{ spec.description }}</p>
+                <div class="meta">
+                    <div class="chip">Last checked: {{ state.get("last_checked_at", "never") }}</div>
+                    <div class="chip">Last success: {{ state.get("last_success_at", "never") }}</div>
+                    <div class="chip">Failures: {{ state.get("consecutive_failures", 0) }}</div>
+                    <div class="chip">Secret stored: {% if config and config.has_secret %}<span class="ok">yes</span>{% else %}<span class="warn">no</span>{% endif %}</div>
+                </div>
+                {% if state.get("last_error") %}
+                <div class="hint"><strong>Last error:</strong> {{ state.get("last_error") }}</div>
+                {% endif %}
+                <form action="/settings/provider/{{ spec.provider }}" method="post">
+                    <div class="fields">
+                        <div class="field">
+                            <label for="{{ spec.provider }}-enabled">Enabled</label>
+                            <select id="{{ spec.provider }}-enabled" name="enabled">
+                                <option value="" {% if not config or not config.enabled %}selected{% endif %}>Disabled</option>
+                                <option value="1" {% if config and config.enabled %}selected{% endif %}>Enabled</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label for="{{ spec.provider }}-url">Usage URL</label>
+                            <input id="{{ spec.provider }}-url" name="usage_url" type="text" placeholder="{{ spec.usage_placeholder }}" value="{{ config.usage_url if config else spec.default_usage_url }}">
+                        </div>
+                        <div class="field full">
+                            <label for="{{ spec.provider }}-headers">Custom headers JSON</label>
+                            <textarea id="{{ spec.provider }}-headers" name="headers_json">{{ config.headers_json if config else "{}" }}</textarea>
+                        </div>
+                        <div class="field full">
+                            <label for="{{ spec.provider }}-secret">Cookie header</label>
+                            <textarea id="{{ spec.provider }}-secret" name="secret_input" placeholder="{{ spec.secret_hint }}"></textarea>
+                        </div>
+                        <div class="field full">
+                            <label for="{{ spec.provider }}-notes">Notes</label>
+                            <textarea id="{{ spec.provider }}-notes" name="notes">{{ config.notes if config else "" }}</textarea>
+                        </div>
+                    </div>
+                    <div class="hint">
+                        <strong>Recommended for {{ spec.display_name }}:</strong>
+                        {{ spec.secret_hint }}
+                        Blank secret input keeps the existing stored secret. Use “Clear stored secret” only if you want to force a fresh paste.
+                    </div>
+                    <div class="actions">
+                        <button type="submit">Save {{ spec.display_name }} settings</button>
+                        <button class="ghost" type="submit" name="clear_secret" value="1">Clear stored secret</button>
+                    </div>
+                </form>
+            </section>
+            {% endfor %}
+        </div>
+
+        <section class="panel" style="margin-top:18px;">
+            <h2>Manual poll</h2>
+            <p>Useful right after saving cookies. This runs immediately and records only a change or heartbeat snapshot.</p>
+            <form action="/settings/poll" method="post">
+                <div class="fields">
+                    <div class="field">
+                        <label for="manual-provider">Provider</label>
+                        <select id="manual-provider" name="provider">
+                            <option value="all">All enabled providers</option>
+                            {% for spec in provider_specs %}
+                            <option value="{{ spec.provider }}">{{ spec.display_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="actions">
+                    <button type="submit">Run manual poll</button>
+                </div>
+            </form>
+        </section>
+    </div>
+</body>
+</html>

@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token Burn Monitor</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
+    <style>
+        :root {
+            --bg: #07121f;
+            --panel: #0f1e31;
+            --panel-soft: #132844;
+            --text: #f3f6fb;
+            --muted: #8ea6c4;
+            --line: #213756;
+            --accent: #ff7a18;
+            --accent-2: #31c4ff;
+            --ok: #38d39f;
+            --error: #ff6a6a;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(49, 196, 255, 0.18), transparent 28%),
+                radial-gradient(circle at top right, rgba(255, 122, 24, 0.18), transparent 24%),
+                linear-gradient(180deg, #07121f 0%, #08111d 100%);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        .page {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 32px 24px 48px;
+        }
+        .topbar, .filters, .cards, .charts, .table-card { display: grid; gap: 16px; }
+        .topbar {
+            grid-template-columns: 1.4fr auto;
+            align-items: start;
+            margin-bottom: 24px;
+        }
+        .headline h1 {
+            margin: 0;
+            font-size: clamp(2rem, 3vw, 3rem);
+            line-height: 1.05;
+            letter-spacing: -0.03em;
+        }
+        .headline p {
+            margin: 10px 0 0;
+            color: var(--muted);
+            max-width: 60ch;
+        }
+        .topbar-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        .pill, .link-btn, button, select, input {
+            border-radius: 12px;
+            border: 1px solid var(--line);
+        }
+        .pill, .link-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 42px;
+            padding: 0 14px;
+            text-decoration: none;
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.02);
+        }
+        .link-btn.primary {
+            background: linear-gradient(135deg, var(--accent), #ff9a3d);
+            border-color: rgba(255, 122, 24, 0.55);
+            color: #180d03;
+            font-weight: 700;
+        }
+        .filters {
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            background: rgba(15, 30, 49, 0.82);
+            border: 1px solid var(--line);
+            border-radius: 24px;
+            padding: 16px;
+            margin-bottom: 24px;
+            backdrop-filter: blur(10px);
+        }
+        .field {
+            display: grid;
+            gap: 8px;
+        }
+        .field label {
+            font-size: 0.78rem;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+        select, input {
+            min-height: 44px;
+            background: var(--panel-soft);
+            color: var(--text);
+            padding: 0 12px;
+        }
+        button {
+            min-height: 44px;
+            padding: 0 18px;
+            cursor: pointer;
+            background: linear-gradient(135deg, var(--accent), #ff9a3d);
+            border-color: rgba(255, 122, 24, 0.65);
+            color: #1a0f05;
+            font-weight: 700;
+        }
+        .cards {
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            margin-bottom: 24px;
+        }
+        .card, .table-card {
+            background: rgba(15, 30, 49, 0.86);
+            border: 1px solid var(--line);
+            border-radius: 24px;
+            padding: 20px;
+            backdrop-filter: blur(12px);
+        }
+        .metric-label {
+            color: var(--muted);
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            margin-top: 8px;
+        }
+        .metric-subtext {
+            margin-top: 12px;
+            color: var(--muted);
+            font-size: 0.92rem;
+            line-height: 1.5;
+        }
+        .state-ok { color: var(--ok); }
+        .state-error { color: var(--error); }
+        .charts {
+            grid-template-columns: 1.5fr 1fr;
+            margin-bottom: 24px;
+        }
+        .chart-card {
+            background: rgba(15, 30, 49, 0.86);
+            border: 1px solid var(--line);
+            border-radius: 24px;
+            padding: 20px;
+            min-height: 420px;
+        }
+        .chart-card h2, .table-card h2 {
+            margin: 0 0 8px;
+            font-size: 1.05rem;
+        }
+        .chart-meta, .table-meta {
+            margin: 0 0 18px;
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+        .chart-wrap {
+            position: relative;
+            min-height: 320px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            text-align: left;
+            padding: 14px 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            vertical-align: top;
+        }
+        th {
+            font-size: 0.76rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--muted);
+        }
+        td {
+            font-size: 0.92rem;
+            color: var(--text);
+        }
+        .provider-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 6px 10px;
+            background: rgba(255, 255, 255, 0.04);
+            font-size: 0.82rem;
+        }
+        .reason-chip {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            padding: 5px 10px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--muted);
+        }
+        .empty {
+            color: var(--muted);
+            padding: 36px 0;
+        }
+        @media (max-width: 1100px) {
+            .filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+            .charts { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 760px) {
+            .page { padding: 18px 14px 32px; }
+            .topbar { grid-template-columns: 1fr; }
+            .topbar-actions { flex-wrap: wrap; }
+            .filters { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <section class="topbar">
+            <div class="headline">
+                <div class="pill">Poll every {{ poll_interval_seconds }}s, heartbeat {{ heartbeat_interval_seconds }}s</div>
+                <h1>Token burn history for Claude and Codex.</h1>
+                <p>The server polls the authenticated JSON usage endpoints, writes only changes plus hourly heartbeats, and keeps everything in SQLite for filtering and charting.</p>
+            </div>
+            <div class="topbar-actions">
+                <a class="link-btn" href="/healthz">Health</a>
+                <a class="link-btn primary" href="/settings">Settings</a>
+            </div>
+        </section>
+
+        <form class="filters" id="filters-form">
+            <div class="field">
+                <label for="provider">Provider</label>
+                <select id="provider" name="provider">
+                    <option value="all" {% if filters.provider == "all" %}selected{% endif %}>All providers</option>
+                    {% for item in provider_choices %}
+                    <option value="{{ item.provider }}" {% if filters.provider == item.provider %}selected{% endif %}>{{ item.display_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field">
+                <label for="period">Period</label>
+                <select id="period" name="period">
+                    {% for value, label in [("24h","Last 24 hours"),("7d","Last 7 days"),("30d","Last 30 days"),("90d","Last 90 days"),("all","All time"),("custom","Custom")] %}
+                    <option value="{{ value }}" {% if filters.period == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field">
+                <label for="start">Start</label>
+                <input id="start" name="start" type="datetime-local" value="{{ filters.start }}">
+            </div>
+            <div class="field">
+                <label for="end">End</label>
+                <input id="end" name="end" type="datetime-local" value="{{ filters.end }}">
+            </div>
+            <div class="field">
+                <label>&nbsp;</label>
+                <button type="submit">Apply filters</button>
+            </div>
+            <div class="field">
+                <label>&nbsp;</label>
+                <a class="link-btn" href="/">Reset</a>
+            </div>
+        </form>
+
+        <section class="cards" id="latest-cards">
+            {% for provider, snapshot in latest.items() %}
+            <article class="card">
+                <div class="metric-label">{{ provider|upper }}</div>
+                <div class="metric-value">{{ snapshot.plan_name or provider|title }}</div>
+                <div class="metric-subtext">{{ snapshot.summary }}</div>
+                {% set state = states.get(provider, {}) %}
+                <div class="metric-subtext">
+                    Last checked:
+                    <span class="{% if state.get('last_error') %}state-error{% else %}state-ok{% endif %}">
+                        {{ state.get("last_checked_at", "never") }}
+                    </span>
+                </div>
+            </article>
+            {% endfor %}
+            {% if not latest %}
+            <article class="card">
+                <div class="metric-label">No snapshots yet</div>
+                <div class="metric-value">Configure cookies</div>
+                <div class="metric-subtext">Open settings, paste the Cookie headers from Claude and ChatGPT usage requests, then trigger a manual poll.</div>
+            </article>
+            {% endif %}
+        </section>
+
+        <section class="charts">
+            <article class="chart-card">
+                <h2>Usage Utilization</h2>
+                <p class="chart-meta">Percent used over time for each tracked window and metered feature.</p>
+                <div class="chart-wrap">
+                    <canvas id="utilization-chart"></canvas>
+                </div>
+            </article>
+            <article class="chart-card">
+                <h2>Recorded Changes</h2>
+                <p class="chart-meta">How many snapshots were written per day after deduplication.</p>
+                <div class="chart-wrap">
+                    <canvas id="changes-chart"></canvas>
+                </div>
+            </article>
+        </section>
+
+        <section class="table-card">
+            <h2>Snapshot History</h2>
+            <p class="table-meta">Latest 250 stored snapshots in the selected date range.</p>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>When</th>
+                            <th>Provider</th>
+                            <th>Reason</th>
+                            <th>Plan</th>
+                            <th>Summary</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-body">
+                        <tr><td colspan="5" class="empty">Loading history…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <script>
+    const chartColors = [
+        "#ff7a18",
+        "#31c4ff",
+        "#7ce38b",
+        "#c38cff",
+        "#ffd166",
+        "#ff6b6b",
+        "#7bdff2",
+        "#b8f2e6"
+    ];
+
+    let utilizationChart;
+    let changesChart;
+
+    const filtersForm = document.getElementById("filters-form");
+    const providerField = document.getElementById("provider");
+    const periodField = document.getElementById("period");
+    const startField = document.getElementById("start");
+    const endField = document.getElementById("end");
+
+    function buildQuery() {
+        const params = new URLSearchParams();
+        params.set("provider", providerField.value);
+        params.set("period", periodField.value);
+        if (startField.value) params.set("start", new Date(startField.value).toISOString());
+        if (endField.value) params.set("end", new Date(endField.value).toISOString());
+        return params.toString();
+    }
+
+    function fmtDate(value) {
+        return new Date(value).toLocaleString();
+    }
+
+    function metricPointValue(point) {
+        if (point.percent_value !== null && point.percent_value !== undefined) return point.percent_value;
+        if (point.used_value !== null && point.used_value !== undefined) return point.used_value;
+        return null;
+    }
+
+    function renderCards(latest, states) {
+        const cards = document.getElementById("latest-cards");
+        const providers = Object.keys(latest);
+        if (!providers.length) {
+            cards.innerHTML = `
+                <article class="card">
+                    <div class="metric-label">No snapshots yet</div>
+                    <div class="metric-value">Configure cookies</div>
+                    <div class="metric-subtext">Open settings, paste the Cookie headers from Claude and ChatGPT usage requests, then trigger a manual poll.</div>
+                </article>
+            `;
+            return;
+        }
+
+        cards.innerHTML = providers.map((provider) => {
+            const snapshot = latest[provider];
+            const state = states[provider] || {};
+            const stateClass = state.last_error ? "state-error" : "state-ok";
+            return `
+                <article class="card">
+                    <div class="metric-label">${provider.toUpperCase()}</div>
+                    <div class="metric-value">${snapshot.plan_name || provider}</div>
+                    <div class="metric-subtext">${snapshot.summary || "No summary available."}</div>
+                    <div class="metric-subtext">Last checked: <span class="${stateClass}">${state.last_checked_at || "never"}</span></div>
+                </article>
+            `;
+        }).join("");
+    }
+
+    function renderUtilizationChart(series) {
+        const datasets = series
+            .filter((item) => item.points.some((point) => metricPointValue(point) !== null))
+            .map((item, index) => ({
+                label: `${item.provider.toUpperCase()} · ${item.label}`,
+                data: item.points.map((point) => ({
+                    x: point.recorded_at,
+                    y: metricPointValue(point)
+                })),
+                borderColor: chartColors[index % chartColors.length],
+                backgroundColor: chartColors[index % chartColors.length] + "33",
+                tension: 0.28,
+                fill: false
+            }));
+
+        if (utilizationChart) utilizationChart.destroy();
+        utilizationChart = new Chart(document.getElementById("utilization-chart"), {
+            type: "line",
+            data: { datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: "nearest", intersect: false },
+                parsing: false,
+                scales: {
+                    x: {
+                        type: "time",
+                        time: { tooltipFormat: "yyyy-MM-dd HH:mm" },
+                        ticks: { color: "#8ea6c4" },
+                        grid: { color: "rgba(255,255,255,0.06)" }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: { color: "#8ea6c4" },
+                        grid: { color: "rgba(255,255,255,0.06)" }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: { color: "#f3f6fb", boxWidth: 14 }
+                    }
+                }
+            }
+        });
+    }
+
+    function renderChangesChart(changeCounts) {
+        const buckets = [...new Set(changeCounts.map((row) => row.bucket))];
+        const providers = [...new Set(changeCounts.map((row) => row.provider))];
+        const datasets = providers.map((provider, index) => ({
+            label: provider.toUpperCase(),
+            data: buckets.map((bucket) => {
+                const match = changeCounts.find((row) => row.bucket === bucket && row.provider === provider);
+                return match ? match.change_count : 0;
+            }),
+            backgroundColor: chartColors[index % chartColors.length] + "bb"
+        }));
+
+        if (changesChart) changesChart.destroy();
+        changesChart = new Chart(document.getElementById("changes-chart"), {
+            type: "bar",
+            data: {
+                labels: buckets,
+                datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        ticks: { color: "#8ea6c4" },
+                        grid: { color: "rgba(255,255,255,0.06)" }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: { color: "#8ea6c4" },
+                        grid: { color: "rgba(255,255,255,0.06)" }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: { color: "#f3f6fb" }
+                    }
+                }
+            }
+        });
+    }
+
+    function renderHistory(snapshots) {
+        const body = document.getElementById("history-body");
+        if (!snapshots.length) {
+            body.innerHTML = `<tr><td colspan="5" class="empty">No snapshots for the selected range.</td></tr>`;
+            return;
+        }
+        body.innerHTML = snapshots.map((snapshot) => `
+            <tr>
+                <td>${fmtDate(snapshot.recorded_at)}</td>
+                <td><span class="provider-chip">${snapshot.provider.toUpperCase()}</span></td>
+                <td><span class="reason-chip">${snapshot.reason}</span></td>
+                <td>${snapshot.plan_name || "—"}</td>
+                <td>${snapshot.summary}</td>
+            </tr>
+        `).join("");
+    }
+
+    async function loadHistory(pushState = false) {
+        const query = buildQuery();
+        if (pushState) {
+            const target = query ? `/?${query}` : "/";
+            history.replaceState({}, "", target);
+        }
+        const response = await fetch(`/api/history?${query}`);
+        const data = await response.json();
+        renderCards(data.latest, data.states);
+        renderUtilizationChart(data.series);
+        renderChangesChart(data.change_counts);
+        renderHistory(data.snapshots);
+    }
+
+    filtersForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        await loadHistory(true);
+    });
+
+    periodField.addEventListener("change", () => {
+        if (periodField.value !== "custom") {
+            startField.value = "";
+            endField.value = "";
+        }
+    });
+
+    loadHistory(false);
+    </script>
+</body>
+</html>

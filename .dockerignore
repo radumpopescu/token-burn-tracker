@@ -1,0 +1,10 @@
+.git
+.claude
+__pycache__
+*.pyc
+*.pyo
+*.db
+*.sqlite
+.venv
+venv
+data
