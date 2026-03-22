@@ -31,7 +31,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 async def lifespan(app: FastAPI):
     db = Database(DB_PATH)
     db.init_db(
-        poll_interval_seconds=int(os.environ.get("POLL_INTERVAL_SECONDS", "300")),
+        poll_interval_seconds=int(os.environ.get("POLL_INTERVAL_SECONDS", "60")),
         heartbeat_interval_seconds=int(os.environ.get("HEARTBEAT_INTERVAL_SECONDS", "3600")),
     )
     secret_box = SecretBox(os.environ.get("APP_ENCRYPTION_KEY"))
@@ -101,8 +101,11 @@ async def api_history(
     db: Database = Depends(get_db),
 ) -> JSONResponse:
     filters = _resolve_range(period=period, start=start, end=end)
+    settings = db.get_app_settings()
+    metric_labels = _parse_metric_labels(settings.get("metric_labels", "{}"))
     payload = {
         "filters": filters,
+        "metric_labels": metric_labels,
         "latest": db.latest_snapshots_by_provider(),
         "states": db.get_provider_states(),
         "series": db.list_metric_series(
@@ -139,6 +142,8 @@ async def settings_page(request: Request, db: Database = Depends(get_db)):
         }
     states = db.get_provider_states()
     settings = db.get_app_settings()
+    metric_labels = _parse_metric_labels(settings.get("metric_labels", "{}"))
+    known_metrics = db.list_distinct_metrics()
     return templates.TemplateResponse(
         "settings.html",
         {
@@ -151,6 +156,8 @@ async def settings_page(request: Request, db: Database = Depends(get_db)):
             "admin_auth_enabled": admin_auth_enabled(),
             "encryption_enabled": request.app.state.secret_box.enabled,
             "secret_details": secret_details,
+            "known_metrics": known_metrics,
+            "metric_labels": metric_labels,
         },
     )
 
@@ -198,8 +205,7 @@ async def update_provider_settings(
             secret_values["cookie_header"] = imported_request.cookie_header
         if imported_request.authorization:
             secret_values["authorization"] = imported_request.authorization
-        if provider == "codex":
-            parsed_headers = imported_request.headers
+        parsed_headers = imported_request.headers
 
     sealed_secret: str | object = DB_SENTINEL
     if clear_secret:
@@ -207,11 +213,8 @@ async def update_provider_settings(
     else:
         if secret_input.strip():
             secret_values["cookie_header"] = secret_input.strip()
-        if provider == "codex" and authorization_input.strip():
+        if authorization_input.strip():
             secret_values["authorization"] = authorization_input.strip()
-        if provider == "claude":
-            parsed_headers = {}
-            secret_values.pop("authorization", None)
 
         if request_import.strip() or secret_input.strip() or authorization_input.strip():
             sealed_secret = secret_box.seal(encode_secret_payload(secret_values))
@@ -238,6 +241,21 @@ async def update_app_settings(
     db.update_app_setting("poll_interval_seconds", str(max(60, poll_interval_seconds)))
     db.update_app_setting("heartbeat_interval_seconds", str(max(300, heartbeat_interval_seconds)))
     return RedirectResponse(url="/settings?notice=app-settings-saved", status_code=303)
+
+
+@app.post("/settings/labels", dependencies=[Depends(require_admin)])
+async def update_metric_labels(
+    request: Request,
+    db: Database = Depends(get_db),
+):
+    form = await request.form()
+    labels: dict[str, str] = {}
+    for key, value in form.items():
+        if key.startswith("label_") and str(value).strip():
+            metric_key = key[6:]
+            labels[metric_key] = str(value).strip()
+    db.update_app_setting("metric_labels", json.dumps(labels, sort_keys=True))
+    return RedirectResponse(url="/settings?notice=labels-saved", status_code=303)
 
 
 @app.post("/settings/poll", dependencies=[Depends(require_admin)])
@@ -305,6 +323,16 @@ def _resolve_range(period: str, start: str | None, end: str | None) -> dict[str,
         "start_input": start_at.astimezone().strftime("%Y-%m-%dT%H:%M") if start_at else "",
         "end_input": end_at.astimezone().strftime("%Y-%m-%dT%H:%M") if end_at else "",
     }
+
+
+def _parse_metric_labels(raw: str) -> dict[str, str]:
+    try:
+        parsed = json.loads(raw)
+        if isinstance(parsed, dict):
+            return {str(k): str(v) for k, v in parsed.items() if str(v).strip()}
+    except (json.JSONDecodeError, TypeError):
+        pass
+    return {}
 
 
 def _parse_datetime(value: str) -> datetime | None:

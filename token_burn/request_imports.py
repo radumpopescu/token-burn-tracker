@@ -11,6 +11,12 @@ from urllib.parse import urlparse
 IMPORTED_HEADER_ALLOWLIST = {
     "accept",
     "accept-language",
+    "anthropic-anonymous-id",
+    "anthropic-client-platform",
+    "anthropic-client-sha",
+    "anthropic-client-version",
+    "anthropic-device-id",
+    "content-type",
     "oai-client-build-number",
     "oai-client-version",
     "oai-device-id",

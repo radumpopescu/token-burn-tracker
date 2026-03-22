@@ -24,266 +24,111 @@
             margin: 0;
             font-family: "SF Pro Display", "Segoe UI", system-ui, sans-serif;
             background:
-                radial-gradient(circle at top left, rgba(49, 196, 255, 0.18), transparent 28%),
-                radial-gradient(circle at top right, rgba(255, 122, 24, 0.18), transparent 24%),
+                radial-gradient(circle at top left, rgba(49,196,255,0.18), transparent 28%),
+                radial-gradient(circle at top right, rgba(255,122,24,0.18), transparent 24%),
                 linear-gradient(180deg, #07121f 0%, #08111d 100%);
             color: var(--text);
             min-height: 100vh;
         }
-        .page {
-            max-width: 1440px;
-            margin: 0 auto;
-            padding: 24px 24px 48px;
-        }
+        .page { max-width: 1200px; margin: 0 auto; padding: 24px 24px 48px; }
+
         .topbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            gap: 16px;
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 20px; gap: 16px;
         }
-        .topbar-left {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-        .topbar-left h1 {
-            margin: 0;
-            font-size: 1.4rem;
-            letter-spacing: -0.02em;
-        }
+        .topbar-left { display: flex; align-items: center; gap: 16px; }
+        .topbar-left h1 { margin: 0; font-size: 1.4rem; letter-spacing: -0.02em; }
         .pill {
-            display: inline-flex;
-            align-items: center;
-            min-height: 32px;
-            padding: 0 12px;
-            border-radius: 10px;
-            border: 1px solid var(--line);
-            background: rgba(255,255,255,0.02);
-            font-size: 0.78rem;
-            color: var(--muted);
-        }
-        .topbar-actions {
-            display: flex;
-            gap: 10px;
-            align-items: center;
+            display: inline-flex; align-items: center; min-height: 32px;
+            padding: 0 12px; border-radius: 10px; border: 1px solid var(--line);
+            background: rgba(255,255,255,0.02); font-size: 0.78rem; color: var(--muted);
         }
         .link-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 36px;
-            padding: 0 14px;
-            text-decoration: none;
-            color: var(--text);
-            border-radius: 10px;
-            border: 1px solid var(--line);
-            background: rgba(255,255,255,0.02);
-            font-size: 0.85rem;
+            display: inline-flex; align-items: center; justify-content: center;
+            min-height: 36px; padding: 0 14px; text-decoration: none; color: var(--text);
+            border-radius: 10px; border: 1px solid var(--line); background: rgba(255,255,255,0.02); font-size: 0.85rem;
         }
         .link-btn.primary {
             background: linear-gradient(135deg, var(--accent), #ff9a3d);
-            border-color: rgba(255,122,24,0.55);
-            color: #180d03;
-            font-weight: 700;
+            border-color: rgba(255,122,24,0.55); color: #180d03; font-weight: 700;
         }
 
-        /* Filters row */
-        .filters {
-            display: flex;
-            gap: 10px;
-            align-items: end;
-            flex-wrap: wrap;
-            margin-bottom: 20px;
+        /* Usage groups */
+        .usage-group { margin-bottom: 16px; }
+        .usage-group-title {
+            font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em;
+            color: var(--muted); margin: 0 0 8px; font-weight: 600;
         }
-        .filters .field { display: grid; gap: 4px; }
-        .filters label {
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            color: var(--muted);
-        }
-        .filters select, .filters input {
-            min-height: 36px;
-            background: var(--panel-soft);
-            color: var(--text);
-            padding: 0 10px;
-            border-radius: 8px;
-            border: 1px solid var(--line);
-            font: inherit;
-            font-size: 0.85rem;
-        }
-        .filters button {
-            min-height: 36px;
-            padding: 0 14px;
-            cursor: pointer;
-            background: linear-gradient(135deg, var(--accent), #ff9a3d);
-            border-color: rgba(255,122,24,0.65);
-            color: #1a0f05;
-            font-weight: 700;
-            border-radius: 8px;
-            border: 1px solid rgba(255,122,24,0.65);
-            font: inherit;
-            font-size: 0.85rem;
-        }
-
-        /* Usage limits section - Claude website style */
-        .usage-section {
-            margin-bottom: 20px;
-        }
-        .usage-section h2 {
-            margin: 0 0 12px;
-            font-size: 1rem;
-            font-weight: 600;
+        .usage-group-subtitle {
+            font-size: 0.72rem; color: var(--muted); margin: -4px 0 8px; font-weight: 400;
         }
         .usage-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 12px;
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px;
         }
         .usage-item {
-            background: rgba(15,30,49,0.86);
-            border: 1px solid var(--line);
-            border-radius: 14px;
-            padding: 14px 16px;
+            background: rgba(15,30,49,0.86); border: 1px solid var(--line);
+            border-radius: 12px; padding: 12px 14px;
         }
         .usage-item-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 4px;
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;
         }
-        .usage-item-label {
-            font-size: 0.85rem;
-            color: var(--text);
-            font-weight: 500;
-        }
+        .usage-item-label { font-size: 0.82rem; color: var(--text); font-weight: 500; }
         .usage-item-provider {
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            color: var(--muted);
-            background: rgba(255,255,255,0.05);
-            padding: 2px 8px;
-            border-radius: 6px;
+            font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.04em;
+            color: var(--muted); background: rgba(255,255,255,0.05); padding: 2px 7px; border-radius: 5px;
         }
-        .usage-item-pct {
-            font-size: 0.8rem;
-            color: var(--muted);
-            font-weight: 600;
-            margin-bottom: 6px;
-        }
-        .usage-bar-track {
-            height: 8px;
-            background: rgba(255,255,255,0.08);
-            border-radius: 4px;
-            overflow: hidden;
-        }
-        .usage-bar-fill {
-            height: 100%;
-            border-radius: 4px;
-            transition: width 0.4s ease;
-        }
+        .usage-item-pct { font-size: 0.78rem; color: var(--muted); font-weight: 600; margin-bottom: 5px; }
+        .usage-bar-track { height: 7px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; }
+        .usage-bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
         .usage-bar-fill.low { background: var(--accent-2); }
         .usage-bar-fill.mid { background: var(--accent); }
         .usage-bar-fill.high { background: var(--error); }
         .usage-item-footer {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 6px;
-            font-size: 0.75rem;
-            color: var(--muted);
+            display: flex; justify-content: space-between; margin-top: 5px;
+            font-size: 0.7rem; color: var(--muted);
+        }
+        .no-data-msg { color: var(--muted); padding: 16px; text-align: center; font-size: 0.9rem; }
+
+        /* Chart section */
+        .chart-section {
+            background: rgba(15,30,49,0.86); border: 1px solid var(--line);
+            border-radius: 16px; padding: 16px; margin-bottom: 20px;
+        }
+        .chart-section h2 { margin: 0 0 10px; font-size: 0.95rem; }
+
+        /* Period toggles */
+        .period-toggles {
+            display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 10px;
+        }
+        .period-chip {
+            padding: 5px 12px; border-radius: 8px; font-size: 0.78rem;
+            cursor: pointer; user-select: none; border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.04); color: var(--muted); transition: all 0.15s;
+        }
+        .period-chip.active {
+            background: linear-gradient(135deg, var(--accent), #ff9a3d);
+            border-color: rgba(255,122,24,0.5); color: #1a0f05; font-weight: 700;
         }
 
-        /* Charts */
-        .charts {
-            display: grid;
-            grid-template-columns: 1.5fr 1fr;
-            gap: 12px;
-            margin-bottom: 20px;
+        /* Series toggle chips */
+        .series-toggles {
+            display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;
         }
-        .chart-card {
-            background: rgba(15,30,49,0.86);
-            border: 1px solid var(--line);
-            border-radius: 16px;
-            padding: 16px;
-            min-height: 360px;
+        .series-chip {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 4px 10px; border-radius: 8px; font-size: 0.75rem;
+            cursor: pointer; user-select: none; border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.06); color: var(--text); transition: all 0.15s;
         }
-        .chart-card.full-span { grid-column: 1 / -1; }
-        .chart-card h2 {
-            margin: 0 0 4px;
-            font-size: 0.95rem;
+        .series-chip.off {
+            opacity: 0.35; background: transparent;
         }
-        .chart-meta {
-            margin: 0 0 12px;
-            color: var(--muted);
-            font-size: 0.82rem;
-        }
-        .chart-wrap {
-            position: relative;
-            min-height: 280px;
+        .series-chip .dot {
+            width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
         }
 
-        /* Table */
-        .table-card {
-            background: rgba(15,30,49,0.86);
-            border: 1px solid var(--line);
-            border-radius: 16px;
-            padding: 16px;
-        }
-        .table-card h2 { margin: 0 0 4px; font-size: 0.95rem; }
-        .table-meta { margin: 0 0 12px; color: var(--muted); font-size: 0.82rem; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td {
-            text-align: left;
-            padding: 10px 8px;
-            border-bottom: 1px solid rgba(255,255,255,0.06);
-            vertical-align: top;
-        }
-        th {
-            font-size: 0.72rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--muted);
-        }
-        td { font-size: 0.85rem; }
-        .provider-chip {
-            display: inline-flex;
-            align-items: center;
-            border-radius: 999px;
-            border: 1px solid rgba(255,255,255,0.08);
-            padding: 4px 8px;
-            background: rgba(255,255,255,0.04);
-            font-size: 0.75rem;
-        }
-        .reason-chip {
-            display: inline-flex;
-            border-radius: 999px;
-            padding: 4px 8px;
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            background: rgba(255,255,255,0.06);
-            color: var(--muted);
-        }
-        .table-time {
-            display: inline-flex;
-            flex-direction: column;
-            gap: 1px;
-        }
-        .table-time strong { font-weight: 600; color: var(--text); font-size: 0.82rem; }
-        .table-time span { font-size: 0.72rem; color: var(--muted); }
-        .empty { color: var(--muted); padding: 24px 0; }
-        .no-data-msg {
-            color: var(--muted);
-            padding: 16px;
-            text-align: center;
-            font-size: 0.9rem;
-        }
+        .chart-wrap { position: relative; min-height: 300px; }
 
-        @media (max-width: 1100px) {
-            .charts { grid-template-columns: 1fr; }
-        }
         @media (max-width: 760px) {
             .page { padding: 14px 12px 32px; }
             .topbar { flex-direction: column; align-items: flex-start; }
@@ -298,117 +143,54 @@
                 <h1>Token Burn</h1>
                 <span class="pill">Poll {{ poll_interval_seconds }}s / HB {{ heartbeat_interval_seconds }}s</span>
             </div>
-            <div class="topbar-actions">
-                <a class="link-btn" href="/healthz">Health</a>
-                <a class="link-btn primary" href="/settings">Settings</a>
-            </div>
+            <a class="link-btn primary" href="/settings">Settings</a>
         </section>
 
-        <form class="filters" id="filters-form">
-            <div class="field">
-                <label for="provider">Provider</label>
-                <select id="provider" name="provider">
-                    <option value="all" {% if filters.provider == "all" %}selected{% endif %}>All</option>
-                    {% for item in provider_choices %}
-                    <option value="{{ item.provider }}" {% if filters.provider == item.provider %}selected{% endif %}>{{ item.display_name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="field">
-                <label for="period">Period</label>
-                <select id="period" name="period">
-                    {% for value, label in [("24h","24h"),("7d","7d"),("30d","30d"),("90d","90d"),("all","All"),("custom","Custom")] %}
-                    <option value="{{ value }}" {% if filters.period == value %}selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="field">
-                <label for="start">Start</label>
-                <input id="start" name="start" type="datetime-local" value="{{ filters.start }}">
-            </div>
-            <div class="field">
-                <label for="end">End</label>
-                <input id="end" name="end" type="datetime-local" value="{{ filters.end }}">
-            </div>
-            <button type="submit">Apply</button>
-            <a class="link-btn" href="/" style="min-height:36px;font-size:0.85rem;">Reset</a>
-        </form>
+        <div id="usage-container">
+            <div class="no-data-msg">Loading usage data...</div>
+        </div>
 
-        <!-- Current usage limits - Claude website style -->
-        <section class="usage-section" id="usage-section">
-            <h2>Plan usage limits</h2>
-            <div class="usage-grid" id="usage-grid">
-                <div class="no-data-msg">Loading usage data...</div>
+        <section class="chart-section">
+            <h2>Usage over time</h2>
+            <div class="period-toggles" id="period-toggles">
+                {% for value, label in [("24h","24h"),("7d","7d"),("30d","30d"),("90d","90d"),("all","All")] %}
+                <span class="period-chip {% if filters.period == value %}active{% endif %}" data-period="{{ value }}" onclick="setPeriod('{{ value }}', this)">{{ label }}</span>
+                {% endfor %}
             </div>
-        </section>
-
-        <section class="charts">
-            <article class="chart-card">
-                <h2>Usage over time</h2>
-                <p class="chart-meta">Percent used per tracked window over the selected period.</p>
-                <div class="chart-wrap">
-                    <canvas id="utilization-chart"></canvas>
-                </div>
-            </article>
-            <article class="chart-card">
-                <h2>Recorded changes</h2>
-                <p class="chart-meta">Snapshots written per day after deduplication.</p>
-                <div class="chart-wrap">
-                    <canvas id="changes-chart"></canvas>
-                </div>
-            </article>
-        </section>
-
-        <section class="table-card">
-            <h2>Snapshot history</h2>
-            <p class="table-meta">Latest 250 stored snapshots in the selected range.</p>
-            <div style="overflow-x:auto;">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>When</th>
-                            <th>Provider</th>
-                            <th>Reason</th>
-                            <th>Plan</th>
-                            <th>Summary</th>
-                        </tr>
-                    </thead>
-                    <tbody id="history-body">
-                        <tr><td colspan="5" class="empty">Loading...</td></tr>
-                    </tbody>
-                </table>
+            <div class="series-toggles" id="series-toggles"></div>
+            <div class="chart-wrap">
+                <canvas id="utilization-chart"></canvas>
             </div>
         </section>
     </div>
 
     <script>
     const chartColors = ["#ff7a18","#31c4ff","#7ce38b","#c38cff","#ffd166","#ff6b6b","#7bdff2","#b8f2e6"];
-
-    let utilizationChart, changesChart;
-
-    const filtersForm = document.getElementById("filters-form");
-    const providerField = document.getElementById("provider");
-    const periodField = document.getElementById("period");
-    const startField = document.getElementById("start");
-    const endField = document.getElementById("end");
+    let utilizationChart;
+    let allDatasets = [];
+    const hiddenSeries = new Set();
+    let currentPeriod = "{{ filters.period }}";
 
     function buildQuery() {
-        const params = new URLSearchParams();
-        params.set("provider", providerField.value);
-        params.set("period", periodField.value);
-        if (startField.value) params.set("start", new Date(startField.value).toISOString());
-        if (endField.value) params.set("end", new Date(endField.value).toISOString());
-        return params.toString();
+        const p = new URLSearchParams();
+        p.set("provider", "all");
+        p.set("period", currentPeriod);
+        return p.toString();
+    }
+
+    function setPeriod(period, el) {
+        currentPeriod = period;
+        document.querySelectorAll(".period-chip").forEach(c => c.classList.remove("active"));
+        el.classList.add("active");
+        loadData(true);
     }
 
     function safeDate(v) { return v ? new Date(v) : null; }
-
     function fmtDate(v) {
         const d = safeDate(v);
         if (!d || Number.isNaN(d.getTime())) return "\u2014";
         return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(d);
     }
-
     function fmtRelative(v) {
         const d = safeDate(v);
         if (!d || Number.isNaN(d.getTime())) return "";
@@ -422,93 +204,132 @@
         }
         return "";
     }
-
     function fmtDuration(v) {
         const d = safeDate(v);
         if (!d || Number.isNaN(d.getTime())) return "";
-        const sec = Math.round((d.getTime() - Date.now()) / 1000);
-        const abs = Math.abs(sec);
+        const abs = Math.abs(Math.round((d.getTime() - Date.now()) / 1000));
         if (abs < 60) return "< 1 min";
         if (abs < 3600) return `${Math.round(abs / 60)} min`;
         const h = Math.floor(abs / 3600);
         const m = Math.round((abs % 3600) / 60);
         return m > 0 ? `${h} hr ${m} min` : `${h} hr`;
     }
-
-    function barClass(pct) {
-        if (pct >= 80) return "high";
-        if (pct >= 50) return "mid";
-        return "low";
-    }
-
+    function barClass(pct) { return pct >= 80 ? "high" : pct >= 50 ? "mid" : "low"; }
     function metricPointValue(p) {
         if (p.percent_value !== null && p.percent_value !== undefined) return p.percent_value;
         if (p.used_value !== null && p.used_value !== undefined) return p.used_value;
         return null;
     }
 
-    function renderUsageGrid(latest) {
-        const grid = document.getElementById("usage-grid");
+    function classifyMetric(provider, label, resets_at) {
+        const l = (label || "").toLowerCase();
+
+        // Use reset time to determine group: < 24h = session, otherwise weekly
+        if (resets_at) {
+            const resetDate = safeDate(resets_at);
+            if (resetDate && !Number.isNaN(resetDate.getTime())) {
+                const hoursUntilReset = (resetDate.getTime() - Date.now()) / 3600000;
+                if (hoursUntilReset <= 24) return { group: "session", order: 0, title: "Current session", subtitle: "Short-term rate limits (resets within 24 hours)" };
+                return { group: "weekly", order: 1, title: "Weekly limits", subtitle: "Longer rolling window" };
+            }
+        }
+
+        // Fallback to label-based classification
+        if (l.includes("5 hour") || l.includes("5h") || l.includes("primary")) return { group: "session", order: 0, title: "Current session", subtitle: "Short-term rate limits (resets within 24 hours)" };
+        if (l.includes("7 day") || l.includes("weekly") || l.includes("week") || l.includes("secondary")) return { group: "weekly", order: 1, title: "Weekly limits", subtitle: "Longer rolling window" };
+        if (l.includes("extra") || l.includes("credit") || l.includes("monthly")) return { group: "credits", order: 2, title: "Credits / extras", subtitle: "Monthly usage credits and add-ons" };
+        if (l.includes("message") || l.includes("cloud") || l.includes("local")) return { group: "credits", order: 2, title: "Credits / extras", subtitle: "Message and credit counts" };
+        return { group: "other", order: 3, title: "Other limits", subtitle: "" };
+    }
+
+    let metricLabels = {};
+
+    function renderUsage(latest) {
+        const container = document.getElementById("usage-container");
         const items = [];
         Object.entries(latest).forEach(([provider, snapshot]) => {
             (snapshot.metrics || []).forEach((m) => {
                 let pct = m.percent_value;
-                if ((pct === null || pct === undefined) && m.used_value !== null && m.limit_value) {
+                if ((pct === null || pct === undefined) && m.used_value !== null && m.limit_value)
                     pct = (m.used_value / m.limit_value) * 100;
-                }
                 if (pct === null || pct === undefined || Number.isNaN(pct)) return;
-                const clamped = Math.max(0, Math.min(100, pct));
-                items.push({ provider, label: m.label, pct: clamped, resets_at: m.resets_at,
-                    used: m.used_value, limit: m.limit_value, unit: m.unit });
+                const cls = classifyMetric(provider, m.label, m.resets_at);
+                const displayLabel = metricLabels[m.metric_key] || m.label;
+                items.push({ provider, label: displayLabel, pct: Math.max(0, Math.min(100, pct)),
+                    resets_at: m.resets_at, used: m.used_value, limit: m.limit_value, unit: m.unit,
+                    ...cls });
             });
         });
-
         if (!items.length) {
-            grid.innerHTML = '<div class="no-data-msg">No usage data yet. Configure providers in Settings.</div>';
+            container.innerHTML = '<div class="no-data-msg">No usage data yet. Configure providers in Settings.</div>';
             return;
         }
-
-        grid.innerHTML = items.map(item => {
-            const resetInfo = item.resets_at ? `Resets ${fmtRelative(item.resets_at)} (${fmtDuration(item.resets_at)})` : "";
-            const amountInfo = (item.used !== null && item.used !== undefined && item.limit)
-                ? `${Number.isInteger(item.used) ? item.used : item.used.toFixed(1)}/${Number.isInteger(item.limit) ? item.limit : item.limit.toFixed(1)}${item.unit && item.unit !== "percent" ? " " + item.unit : ""}`
-                : "";
-            return `
-                <div class="usage-item">
-                    <div class="usage-item-header">
-                        <span class="usage-item-label">${item.label}</span>
-                        <span class="usage-item-provider">${item.provider}</span>
-                    </div>
+        const groups = {};
+        items.forEach(item => {
+            if (!groups[item.group]) groups[item.group] = { title: item.title, subtitle: item.subtitle, order: item.order, items: [] };
+            groups[item.group].items.push(item);
+        });
+        container.innerHTML = Object.values(groups).sort((a, b) => a.order - b.order).map(g => {
+            const grid = g.items.map(item => {
+                const reset = item.resets_at ? `Resets ${fmtRelative(item.resets_at)} (${fmtDuration(item.resets_at)})` : "";
+                const amt = (item.used !== null && item.used !== undefined && item.limit)
+                    ? `${Number.isInteger(item.used) ? item.used : item.used.toFixed(1)}/${Number.isInteger(item.limit) ? item.limit : item.limit.toFixed(1)}${item.unit && item.unit !== "percent" ? " " + item.unit : ""}`
+                    : "";
+                return `<div class="usage-item">
+                    <div class="usage-item-header"><span class="usage-item-label">${item.label}</span><span class="usage-item-provider">${item.provider}</span></div>
                     <div class="usage-item-pct">${item.pct.toFixed(1)}% used</div>
-                    <div class="usage-bar-track">
-                        <div class="usage-bar-fill ${barClass(item.pct)}" style="width:${item.pct}%"></div>
-                    </div>
-                    <div class="usage-item-footer">
-                        <span>${amountInfo}</span>
-                        <span>${resetInfo}</span>
-                    </div>
-                </div>
-            `;
+                    <div class="usage-bar-track"><div class="usage-bar-fill ${barClass(item.pct)}" style="width:${item.pct}%"></div></div>
+                    <div class="usage-item-footer"><span>${amt}</span><span>${reset}</span></div>
+                </div>`;
+            }).join("");
+            return `<div class="usage-group">
+                <h3 class="usage-group-title">${g.title}</h3>
+                ${g.subtitle ? `<p class="usage-group-subtitle">${g.subtitle}</p>` : ""}
+                <div class="usage-grid">${grid}</div>
+            </div>`;
         }).join("");
     }
 
-    function renderUtilizationChart(series) {
-        const datasets = series
+    function renderSeriesChips() {
+        const container = document.getElementById("series-toggles");
+        container.innerHTML = allDatasets.map((ds, i) => {
+            const isOff = hiddenSeries.has(i);
+            return `<span class="series-chip ${isOff ? "off" : ""}" data-index="${i}" onclick="toggleSeries(${i})">
+                <span class="dot" style="background:${ds.borderColor}"></span>${ds.label}
+            </span>`;
+        }).join("");
+    }
+
+    function toggleSeries(index) {
+        if (hiddenSeries.has(index)) hiddenSeries.delete(index);
+        else hiddenSeries.add(index);
+        updateChartVisibility();
+        renderSeriesChips();
+    }
+
+    function updateChartVisibility() {
+        if (!utilizationChart) return;
+        allDatasets.forEach((ds, i) => {
+            utilizationChart.setDatasetVisibility(i, !hiddenSeries.has(i));
+        });
+        utilizationChart.update("none");
+    }
+
+    function renderChart(series) {
+        allDatasets = series
             .filter(s => s.points.some(p => metricPointValue(p) !== null))
             .map((s, i) => ({
-                label: `${s.provider.toUpperCase()} \u00b7 ${s.label}`,
+                label: `${s.provider.toUpperCase()} \u00b7 ${metricLabels[s.metric_key] || s.label}`,
                 data: s.points.map(p => ({ x: p.recorded_at, y: metricPointValue(p) })),
                 borderColor: chartColors[i % chartColors.length],
                 backgroundColor: chartColors[i % chartColors.length] + "33",
-                tension: 0.28,
-                fill: false,
-                pointRadius: 2
+                tension: 0.28, fill: false, pointRadius: 2,
+                hidden: hiddenSeries.has(i)
             }));
 
         if (utilizationChart) utilizationChart.destroy();
         utilizationChart = new Chart(document.getElementById("utilization-chart"), {
-            type: "line",
-            data: { datasets },
+            type: "line", data: { datasets: allDatasets },
             options: {
                 responsive: true, maintainAspectRatio: false,
                 interaction: { mode: "nearest", intersect: false },
@@ -517,65 +338,26 @@
                     x: { type: "time", time: { tooltipFormat: "PPp", displayFormats: { hour: "MMM d, HH:mm", day: "MMM d" } }, ticks: { color: "#8ea6c4" }, grid: { color: "rgba(255,255,255,0.06)" } },
                     y: { beginAtZero: true, max: 100, ticks: { color: "#8ea6c4", callback: v => v + "%" }, grid: { color: "rgba(255,255,255,0.06)" } }
                 },
-                plugins: { legend: { labels: { color: "#f3f6fb", boxWidth: 12, font: { size: 11 } } } }
+                plugins: {
+                    legend: { display: false }
+                }
             }
         });
+        renderSeriesChips();
     }
 
-    function renderChangesChart(changeCounts) {
-        const buckets = [...new Set(changeCounts.map(r => r.bucket))];
-        const providers = [...new Set(changeCounts.map(r => r.provider))];
-        const datasets = providers.map((p, i) => ({
-            label: p.toUpperCase(),
-            data: buckets.map(b => { const m = changeCounts.find(r => r.bucket === b && r.provider === p); return m ? m.change_count : 0; }),
-            backgroundColor: chartColors[i % chartColors.length] + "bb"
-        }));
-
-        if (changesChart) changesChart.destroy();
-        changesChart = new Chart(document.getElementById("changes-chart"), {
-            type: "bar", data: { labels: buckets, datasets },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                scales: {
-                    x: { ticks: { color: "#8ea6c4" }, grid: { color: "rgba(255,255,255,0.06)" } },
-                    y: { beginAtZero: true, ticks: { color: "#8ea6c4" }, grid: { color: "rgba(255,255,255,0.06)" } }
-                },
-                plugins: { legend: { labels: { color: "#f3f6fb", boxWidth: 12, font: { size: 11 } } } }
-            }
-        });
-    }
-
-    function renderHistory(snapshots) {
-        const body = document.getElementById("history-body");
-        if (!snapshots.length) {
-            body.innerHTML = '<tr><td colspan="5" class="empty">No snapshots for the selected range.</td></tr>';
-            return;
-        }
-        body.innerHTML = snapshots.map(s => `
-            <tr>
-                <td><span class="table-time"><strong>${fmtDate(s.recorded_at)}</strong><span>${fmtRelative(s.recorded_at)}</span></span></td>
-                <td><span class="provider-chip">${s.provider.toUpperCase()}</span></td>
-                <td><span class="reason-chip">${s.reason}</span></td>
-                <td>${s.plan_name || "\u2014"}</td>
-                <td>${s.summary}</td>
-            </tr>
-        `).join("");
-    }
-
-    async function loadHistory(pushState = false) {
+    async function loadData(pushState = false) {
         const query = buildQuery();
         if (pushState) history.replaceState({}, "", query ? `/?${query}` : "/");
         const res = await fetch(`/api/history?${query}`);
         const data = await res.json();
-        renderUsageGrid(data.latest);
-        renderUtilizationChart(data.series);
-        renderChangesChart(data.change_counts);
-        renderHistory(data.snapshots);
+        metricLabels = data.metric_labels || {};
+        renderUsage(data.latest);
+        renderChart(data.series);
     }
 
-    filtersForm.addEventListener("submit", (e) => { e.preventDefault(); loadHistory(true); });
-    periodField.addEventListener("change", () => { if (periodField.value !== "custom") { startField.value = ""; endField.value = ""; } });
-    loadHistory(false);
+    loadData(false);
+    setInterval(() => loadData(false), 60000);
     </script>
 </body>
 </html>

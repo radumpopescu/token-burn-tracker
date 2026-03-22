@@ -28,13 +28,7 @@
             color: var(--text);
         }
         .page { max-width: 860px; margin: 0 auto; padding: 24px 18px 44px; }
-
-        .topbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-        }
+        .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
         .topbar h1 { margin: 0; font-size: 1.4rem; letter-spacing: -0.02em; }
         .link {
             display: inline-flex; align-items: center; justify-content: center;
@@ -42,7 +36,6 @@
             border: 1px solid var(--line); background: rgba(255,255,255,0.03);
             color: var(--text); text-decoration: none; font-size: 0.85rem;
         }
-
         .banner {
             margin-bottom: 12px; padding: 10px 14px; border-radius: 12px;
             border: 1px solid var(--line); background: rgba(255,255,255,0.04);
@@ -52,57 +45,29 @@
         .ok { color: var(--ok); }
         .warn { color: var(--warn); }
 
-        /* Collapsible sections */
         .section {
-            background: rgba(15,29,47,0.9);
-            border: 1px solid var(--line);
-            border-radius: 16px;
-            margin-bottom: 10px;
-            overflow: hidden;
+            background: rgba(15,29,47,0.9); border: 1px solid var(--line);
+            border-radius: 16px; margin-bottom: 10px; overflow: hidden;
         }
         .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 14px 16px;
-            cursor: pointer;
-            user-select: none;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 14px 16px; cursor: pointer; user-select: none;
         }
         .section-header:hover { background: rgba(255,255,255,0.02); }
         .section-header h2 { margin: 0; font-size: 1rem; }
-        .section-header-right {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .section-chevron {
-            color: var(--muted);
-            transition: transform 0.2s;
-            font-size: 0.8rem;
-        }
+        .section-header-right { display: flex; align-items: center; gap: 10px; }
+        .section-chevron { color: var(--muted); transition: transform 0.2s; font-size: 0.8rem; }
         .section.open .section-chevron { transform: rotate(180deg); }
-        .section-body {
-            display: none;
-            padding: 0 16px 16px;
-        }
+        .section-body { display: none; padding: 0 16px 16px; }
         .section.open .section-body { display: block; }
 
-        /* Status chips inline in header */
-        .status-dot {
-            width: 8px; height: 8px; border-radius: 50%; display: inline-block;
-        }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
         .status-dot.ok { background: var(--ok); }
         .status-dot.warn { background: var(--warn); }
         .status-dot.error { background: var(--error); }
         .status-dot.off { background: var(--muted); opacity: 0.4; }
 
-        /* Compact meta row */
-        .meta-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 12px;
-        }
+        .meta-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
         .chip {
             display: inline-flex; align-items: center; gap: 6px;
             border-radius: 999px; border: 1px solid rgba(255,255,255,0.08);
@@ -110,19 +75,11 @@
             background: rgba(255,255,255,0.04);
         }
 
-        /* Forms */
         form { display: grid; gap: 12px; }
-        .fields {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 10px;
-        }
+        .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
         .field { display: grid; gap: 4px; }
         .field.full { grid-column: 1 / -1; }
-        label {
-            color: var(--muted); font-size: 0.75rem;
-            text-transform: uppercase; letter-spacing: 0.05em;
-        }
+        label { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
         input, select, textarea {
             border-radius: 10px; border: 1px solid var(--line);
             background: var(--panel-2); color: var(--text);
@@ -133,9 +90,7 @@
             font-family: "SF Mono", "Fira Code", monospace;
             font-size: 0.82rem; line-height: 1.4;
         }
-        .actions {
-            display: flex; flex-wrap: wrap; gap: 8px;
-        }
+        .actions { display: flex; flex-wrap: wrap; gap: 8px; }
         button {
             cursor: pointer; font-weight: 700; font: inherit; font-size: 0.85rem;
             padding: 8px 16px; border-radius: 10px;
@@ -143,15 +98,12 @@
             color: #1d1005; border: 1px solid rgba(255,122,24,0.5);
         }
         .ghost {
-            background: rgba(255,255,255,0.04);
-            color: var(--text); border-color: var(--line); font-weight: 500;
+            background: rgba(255,255,255,0.04); color: var(--text);
+            border-color: var(--line); font-weight: 500;
         }
-
-        /* Test button */
         .test-btn {
-            background: rgba(255,255,255,0.06);
-            color: var(--text); border-color: var(--line); font-weight: 600;
-            position: relative; min-width: 80px;
+            background: rgba(255,255,255,0.06); color: var(--text);
+            border-color: var(--line); font-weight: 600; min-width: 80px;
         }
         .test-btn.testing { opacity: 0.6; pointer-events: none; }
         .test-result {
@@ -161,16 +113,21 @@
         .test-result.pass { color: var(--ok); }
         .test-result.fail { color: var(--error); }
 
-        .hint {
-            padding: 10px 12px; border-radius: 10px;
-            background: rgba(255,255,255,0.03);
-            border: 1px dashed rgba(255,255,255,0.1);
-            color: var(--muted); font-size: 0.82rem; line-height: 1.4;
+        .instructions {
+            padding: 12px 14px; border-radius: 10px;
+            background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+            color: var(--muted); font-size: 0.82rem; line-height: 1.6;
+            margin-bottom: 12px;
+        }
+        .instructions ol { margin: 6px 0 0; padding-left: 18px; }
+        .instructions li { margin-bottom: 4px; }
+        .instructions code {
+            background: rgba(255,255,255,0.08); padding: 1px 5px;
+            border-radius: 4px; font-size: 0.8rem;
         }
         .error-hint {
             padding: 8px 12px; border-radius: 10px;
-            background: rgba(255,106,106,0.08);
-            border: 1px solid rgba(255,106,106,0.2);
+            background: rgba(255,106,106,0.08); border: 1px solid rgba(255,106,106,0.2);
             color: var(--error); font-size: 0.82rem; margin-bottom: 10px;
         }
 
@@ -198,7 +155,7 @@
             {% if encryption_enabled %}secrets encrypted{% else %}<span class="warn">secrets obfuscated only (APP_ENCRYPTION_KEY not set)</span>{% endif %}
         </div>
 
-        <!-- Polling section -->
+        <!-- Polling -->
         <div class="section open">
             <div class="section-header" onclick="toggleSection(this)">
                 <h2>Polling</h2>
@@ -216,9 +173,7 @@
                             <input id="heartbeat_interval_seconds" name="heartbeat_interval_seconds" type="number" min="300" value="{{ settings.get('heartbeat_interval_seconds', '3600') }}">
                         </div>
                     </div>
-                    <div class="actions">
-                        <button type="submit">Save</button>
-                    </div>
+                    <div class="actions"><button type="submit">Save</button></div>
                 </form>
             </div>
         </div>
@@ -233,16 +188,10 @@
                 <h2>{{ spec.display_name }}</h2>
                 <div class="section-header-right">
                     {% if config and config.enabled %}
-                        {% if state.get("last_error") %}
-                        <span class="status-dot error" title="Last poll had an error"></span>
-                        {% elif state.get("last_success_at") %}
-                        <span class="status-dot ok" title="Working"></span>
-                        {% else %}
-                        <span class="status-dot warn" title="Enabled, not yet polled"></span>
-                        {% endif %}
-                    {% else %}
-                    <span class="status-dot off" title="Disabled"></span>
-                    {% endif %}
+                        {% if state.get("last_error") %}<span class="status-dot error"></span>
+                        {% elif state.get("last_success_at") %}<span class="status-dot ok"></span>
+                        {% else %}<span class="status-dot warn"></span>{% endif %}
+                    {% else %}<span class="status-dot off"></span>{% endif %}
                     <button class="test-btn" onclick="event.stopPropagation(); testProvider('{{ spec.provider }}', this)">Test</button>
                     <span id="test-result-{{ spec.provider }}"></span>
                     <span class="section-chevron">&#9660;</span>
@@ -262,48 +211,102 @@
                 <div class="error-hint"><strong>Error:</strong> {{ state.get("last_error") }}</div>
                 {% endif %}
 
-                <form action="/settings/provider/{{ spec.provider }}" method="post">
-                    <div class="fields">
-                        <div class="field">
-                            <label for="{{ spec.provider }}-enabled">Enabled</label>
-                            <select id="{{ spec.provider }}-enabled" name="enabled">
-                                <option value="" {% if not config or not config.enabled %}selected{% endif %}>Disabled</option>
-                                <option value="1" {% if config and config.enabled %}selected{% endif %}>Enabled</option>
-                            </select>
-                        </div>
-                        <div class="field">
-                            <label for="{{ spec.provider }}-url">Usage URL</label>
-                            <input id="{{ spec.provider }}-url" name="usage_url" type="text" placeholder="{{ spec.usage_placeholder }}" value="{{ config.usage_url if config else spec.default_usage_url }}">
-                        </div>
-                        {% if spec.provider == "codex" %}
-                        <div class="field full">
-                            <label for="{{ spec.provider }}-request-import">Curl command (devtools)</label>
-                            <textarea id="{{ spec.provider }}-request-import" name="request_import" placeholder="Paste full curl command from Codex usage request."></textarea>
-                        </div>
-                        {% endif %}
-                        <div class="field full">
-                            <label for="{{ spec.provider }}-secret">Cookie header</label>
-                            <textarea id="{{ spec.provider }}-secret" name="secret_input" placeholder="{{ spec.secret_hint }}" style="min-height:60px;"></textarea>
-                        </div>
-                        {% if spec.provider == "codex" %}
-                        <div class="field full">
-                            <label for="{{ spec.provider }}-authorization">Authorization header</label>
-                            <textarea id="{{ spec.provider }}-authorization" name="authorization_input" placeholder="Bearer token (optional if using curl import)" style="min-height:60px;"></textarea>
-                        </div>
-                        {% endif %}
-                        <div class="field full">
-                            <label for="{{ spec.provider }}-notes">Notes</label>
-                            <textarea id="{{ spec.provider }}-notes" name="notes" style="min-height:50px;">{{ config.notes if config else "" }}</textarea>
-                        </div>
+                {% if spec.provider == "claude" %}
+                <div class="instructions">
+                    <strong>How to get the curl command:</strong>
+                    <ol>
+                        <li>Go to <code>https://claude.ai/settings/usage</code></li>
+                        <li>Open DevTools (F12) &rarr; Network tab</li>
+                        <li>Click the refresh button next to "Last updated" on the usage page</li>
+                        <li>Find the <code>usage</code> request in the Network tab</li>
+                        <li>Right-click it &rarr; <strong>Copy as cURL</strong></li>
+                        <li>Paste the full curl command below, then hit <strong>Save &amp; Test</strong></li>
+                    </ol>
+                </div>
+                {% else %}
+                <div class="instructions">
+                    <strong>How to get the curl command:</strong>
+                    <ol>
+                        <li>Go to <code>https://chatgpt.com/codex/settings/usage</code></li>
+                        <li>Open DevTools (F12) &rarr; Network tab</li>
+                        <li>Find the <code>usage</code> request (refresh the page if needed)</li>
+                        <li>Right-click it &rarr; <strong>Copy as cURL</strong></li>
+                        <li>Paste the full curl command below, then hit <strong>Save &amp; Test</strong></li>
+                    </ol>
+                </div>
+                {% endif %}
+
+                <form id="form-{{ spec.provider }}" action="/settings/provider/{{ spec.provider }}" method="post">
+                    <input type="hidden" name="enabled" value="1">
+                    <div class="field full">
+                        <label for="{{ spec.provider }}-request-import">Paste curl command</label>
+                        <textarea id="{{ spec.provider }}-request-import" name="request_import" placeholder="curl 'https://...' -H 'accept: ...' -b '...'"></textarea>
                     </div>
                     <div class="actions">
-                        <button type="submit">Save</button>
+                        <button type="button" onclick="saveAndTest('{{ spec.provider }}')">Save &amp; Test</button>
+                        <button class="ghost" type="submit">Save only</button>
                         <button class="ghost" type="submit" name="clear_secret" value="1">Clear secret</button>
                     </div>
+
+                    <!-- Advanced: hidden by default -->
+                    <details style="margin-top:4px;">
+                        <summary style="color:var(--muted);font-size:0.8rem;cursor:pointer;">Advanced options</summary>
+                        <div class="fields" style="margin-top:10px;">
+                            <div class="field">
+                                <label for="{{ spec.provider }}-enabled-adv">Enabled</label>
+                                <select id="{{ spec.provider }}-enabled-adv" onchange="this.form.querySelector('[name=enabled]').value = this.value">
+                                    <option value="" {% if not config or not config.enabled %}selected{% endif %}>Disabled</option>
+                                    <option value="1" {% if config and config.enabled %}selected{% endif %}>Enabled</option>
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label for="{{ spec.provider }}-url">Usage URL</label>
+                                <input id="{{ spec.provider }}-url" name="usage_url" type="text" placeholder="{{ spec.usage_placeholder }}" value="{{ config.usage_url if config else spec.default_usage_url }}">
+                            </div>
+                            <div class="field full">
+                                <label for="{{ spec.provider }}-secret">Cookie header (manual)</label>
+                                <textarea id="{{ spec.provider }}-secret" name="secret_input" placeholder="Only needed if not using curl import" style="min-height:50px;"></textarea>
+                            </div>
+                            {% if spec.provider == "codex" %}
+                            <div class="field full">
+                                <label for="{{ spec.provider }}-authorization">Authorization header (manual)</label>
+                                <textarea id="{{ spec.provider }}-authorization" name="authorization_input" placeholder="Bearer token (optional)" style="min-height:50px;"></textarea>
+                            </div>
+                            {% endif %}
+                            <div class="field full">
+                                <label for="{{ spec.provider }}-notes">Notes</label>
+                                <textarea id="{{ spec.provider }}-notes" name="notes" style="min-height:40px;">{{ config.notes if config else "" }}</textarea>
+                            </div>
+                        </div>
+                    </details>
                 </form>
             </div>
         </div>
         {% endfor %}
+
+        <!-- Metric labels -->
+        {% if known_metrics %}
+        <div class="section" id="section-labels">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2>Metric labels</h2>
+                <span class="section-chevron">&#9660;</span>
+            </div>
+            <div class="section-body">
+                <p style="color:var(--muted);font-size:0.82rem;margin:0 0 12px;">Rename metrics as they appear on the dashboard. Leave blank to use the default name.</p>
+                <form action="/settings/labels" method="post">
+                    <div class="fields">
+                        {% for m in known_metrics %}
+                        <div class="field">
+                            <label>{{ m.provider|upper }} &middot; {{ m.label }}</label>
+                            <input name="label_{{ m.key }}" type="text" placeholder="{{ m.label }}" value="{{ metric_labels.get(m.key, '') }}">
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="actions"><button type="submit">Save labels</button></div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
     </div>
 
     <script>
@@ -311,10 +314,7 @@
         header.closest(".section").classList.toggle("open");
     }
 
-    // Open all sections that have errors or match the notice
-    document.querySelectorAll(".error-hint").forEach(el => {
-        el.closest(".section").classList.add("open");
-    });
+    document.querySelectorAll(".error-hint").forEach(el => el.closest(".section").classList.add("open"));
 
     async function testProvider(provider, btn) {
         const resultEl = document.getElementById("test-result-" + provider);
@@ -324,16 +324,40 @@
         try {
             const res = await fetch("/api/test/" + provider, { method: "POST" });
             const data = await res.json();
-            if (data.ok) {
-                resultEl.innerHTML = '<span class="test-result pass">\u2713</span>';
-            } else {
-                resultEl.innerHTML = '<span class="test-result fail">\u2717</span>';
-            }
+            resultEl.innerHTML = data.ok
+                ? '<span class="test-result pass">\u2713</span>'
+                : '<span class="test-result fail">\u2717</span>';
         } catch {
             resultEl.innerHTML = '<span class="test-result fail">\u2717</span>';
         }
         btn.classList.remove("testing");
         btn.textContent = "Test";
+    }
+
+    async function saveAndTest(provider) {
+        const form = document.getElementById("form-" + provider);
+        const formData = new FormData(form);
+        const section = document.getElementById("section-" + provider);
+        const testBtn = section.querySelector(".test-btn");
+        const resultEl = document.getElementById("test-result-" + provider);
+
+        // Save first
+        resultEl.innerHTML = '<span class="test-result" style="color:var(--muted);">Saving\u2026</span>';
+        try {
+            await fetch(form.action, { method: "POST", body: formData, redirect: "follow" });
+        } catch {}
+
+        // Then test
+        resultEl.innerHTML = '<span class="test-result" style="color:var(--muted);">Testing\u2026</span>';
+        try {
+            const res = await fetch("/api/test/" + provider, { method: "POST" });
+            const data = await res.json();
+            resultEl.innerHTML = data.ok
+                ? '<span class="test-result pass">\u2713 Connected</span>'
+                : '<span class="test-result fail">\u2717 ' + (data.error || "Failed") + '</span>';
+        } catch {
+            resultEl.innerHTML = '<span class="test-result fail">\u2717 Error</span>';
+        }
     }
     </script>
 </body>

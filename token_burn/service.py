@@ -108,7 +108,7 @@ class UsageMonitorService:
 
     def _poll_interval_seconds(self) -> int:
         settings = self.db.get_app_settings()
-        raw_value = settings.get("poll_interval_seconds", os.environ.get("POLL_INTERVAL_SECONDS", "300"))
+        raw_value = settings.get("poll_interval_seconds", os.environ.get("POLL_INTERVAL_SECONDS", "60"))
         return max(60, int(raw_value))
 
     def _heartbeat_interval_seconds(self) -> int:

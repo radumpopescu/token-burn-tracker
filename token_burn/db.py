@@ -167,6 +167,13 @@ class Database:
                 (key, value, _utcnow()),
             )
 
+    def list_distinct_metrics(self) -> list[dict[str, str]]:
+        with self.connect() as conn:
+            rows = conn.execute(
+                "SELECT DISTINCT provider, metric_key, label FROM snapshot_metrics ORDER BY provider, metric_key"
+            ).fetchall()
+        return [{"provider": r["provider"], "key": r["metric_key"], "label": r["label"]} for r in rows]
+
     def list_provider_configs(self) -> list[ProviderConfig]:
         with self.connect() as conn:
             rows = conn.execute("SELECT * FROM provider_configs ORDER BY provider").fetchall()
