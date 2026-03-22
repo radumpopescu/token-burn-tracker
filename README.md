@@ -1,35 +1,53 @@
-# Token Burn
+# Token Burn Tracker
 
-Server-side usage monitor for:
+Self-hosted usage monitor for Claude and ChatGPT/Codex API rate limits. Polls authenticated usage endpoints, stores snapshots in SQLite, and shows a live dashboard with progress bars and historical charts.
 
-- Claude usage limits via `https://claude.ai/api/organizations/<org-id>/usage`
-- Codex usage limits via `https://chatgpt.com/backend-api/wham/usage`
+## Features
 
-The app polls those endpoints on a schedule, deduplicates unchanged results, stores snapshots in SQLite, and exposes a dashboard with graphs and date filters.
+- **Live dashboard** with Claude-style usage bars grouped by session and weekly windows
+- **Historical charts** with per-series toggles and period filters (auto-refreshes every 60s)
+- **Custom metric labels** to rename default metric names in settings
+- **Curl import** for both providers - paste the full curl command from browser devtools
+- **Save & Test** flow with instant pass/fail feedback per provider
+- **Deduplication** - only writes snapshots when usage actually changes, plus periodic heartbeats
+- **Encrypted secret storage** with Fernet (optional)
+- **Docker-ready** with a single `docker compose up`
 
-## How it works
-
-1. Paste the authenticated `Cookie` request header for each provider into the settings page.
-2. The server stores those secrets in SQLite. If `APP_ENCRYPTION_KEY` is set, they are encrypted with Fernet first.
-3. A background poller checks the usage JSON endpoints on a fixed interval.
-4. Snapshots are only written when the normalized response changes, plus periodic heartbeat snapshots so graphs remain continuous.
-
-## Run with Docker Compose
+## Quick start
 
 ```bash
 docker compose up --build
 ```
 
-The app listens on external port `8574` by default through [`compose.yml`](/Users/radu/Developer/token-burn/compose.yml). The container still serves on internal port `8000`.
+Open `http://localhost:8574/settings` (default credentials: `admin` / `change-me`).
 
-### Useful environment variables
+### Setup each provider
 
-- `ADMIN_USERNAME`
-- `ADMIN_PASSWORD`
-- `APP_ENCRYPTION_KEY`
-- `POLL_INTERVAL_SECONDS`
-- `HEARTBEAT_INTERVAL_SECONDS`
-- `TOKEN_BURN_PORT`
+**Claude:**
+1. Go to `https://claude.ai/settings/usage`
+2. Open DevTools (F12) → Network tab
+3. Click the refresh button next to "Last updated"
+4. Right-click the `usage` request → **Copy as cURL**
+5. Paste into the Claude section in settings → **Save & Test**
+
+**Codex (ChatGPT):**
+1. Go to `https://chatgpt.com/codex/settings/usage`
+2. Open DevTools (F12) → Network tab
+3. Find the `usage` request (refresh if needed)
+4. Right-click → **Copy as cURL**
+5. Paste into the Codex section in settings → **Save & Test**
+
+## Environment variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `ADMIN_USERNAME` | `admin` | HTTP Basic Auth username |
+| `ADMIN_PASSWORD` | `change-me` | HTTP Basic Auth password (unset = auth disabled) |
+| `APP_ENCRYPTION_KEY` | _(none)_ | Fernet key for encrypting stored secrets |
+| `POLL_INTERVAL_SECONDS` | `60` | How often to poll usage endpoints |
+| `HEARTBEAT_INTERVAL_SECONDS` | `3600` | Max interval between stored snapshots |
+| `TOKEN_BURN_PORT` | `8574` | External port (Docker Compose) |
+| `TZ` | `UTC` | Timezone for the container |
 
 Generate an encryption key:
 
@@ -37,11 +55,21 @@ Generate an encryption key:
 python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ```
 
-## Initial setup
+## How it works
 
-1. Start the app and open `http://localhost:8574/settings`.
-2. In browser devtools on Claude, copy the `Cookie` header from the `GET /api/organizations/<org-id>/usage` request.
-3. In browser devtools on ChatGPT, copy the `Cookie` header from the `GET /backend-api/wham/usage` request.
-4. Paste each cookie into the matching provider form, save, and run a manual poll.
+1. The server stores cookies and auth tokens in SQLite (encrypted if `APP_ENCRYPTION_KEY` is set)
+2. A background poller checks the usage JSON endpoints on a fixed interval
+3. Snapshots are only written when the normalized response changes, plus periodic heartbeats so charts stay continuous
+4. The dashboard auto-refreshes every 60 seconds
+5. No browser automation - it only replays saved cookies/tokens against JSON API endpoints
 
-The app does not use Playwright or browser automation. It only replays the saved `Cookie` header against the JSON usage endpoints.
+## Development
+
+```bash
+pip install -r requirements.txt
+uvicorn token_burn.web:app --reload
+```
+
+## License
+
+MIT
