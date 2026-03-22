@@ -290,7 +290,11 @@
     </div>
 
     <script>
-    const chartColors = ["#ff7a18","#31c4ff","#7ce38b","#c38cff","#ffd166","#ff6b6b","#7bdff2","#b8f2e6"];
+    const providerColorPalettes = {
+        claude: ["#ff7a18", "#ff9a3d", "#ffb86b", "#ffd089"],
+        codex: ["#31c4ff", "#5ed2ff", "#8edfff", "#b7ecff"],
+        default: ["#7ce38b", "#b8f2e6", "#c38cff", "#ffd166"],
+    };
     const dashboardStorageKey = "token-burn.dashboard.preferences.v3";
     const fallbackRefreshSeconds = 30;
     const refreshBufferMs = 3000;
@@ -734,9 +738,22 @@
             ? classification.group
             : null;
     }
+    function hashString(value) {
+        let hash = 0;
+        const input = String(value || "");
+        for (let i = 0; i < input.length; i += 1) {
+            hash = ((hash << 5) - hash) + input.charCodeAt(i);
+            hash |= 0;
+        }
+        return Math.abs(hash);
+    }
+    function colorForSeries(provider, metricKey) {
+        const palette = providerColorPalettes[provider] || providerColorPalettes.default;
+        return palette[hashString(metricKey) % palette.length];
+    }
     function buildDatasets(series, rangeEndTs) {
         const grouped = { session: [], weekly: [] };
-        series.forEach((item, index) => {
+        series.forEach((item) => {
             const groupKey = chartGroupForSeries(item.metric_key, item.label);
             if (!groupKey) return;
             const rangeStartTs = rangeEndTs - chartPeriodToRangeMs(selectedChartPeriods[groupKey]);
@@ -752,7 +769,7 @@
             grouped[groupKey].push({
                 key: `${item.provider}:${item.metric_key}`,
                 label: `${item.provider.toUpperCase()} \u00b7 ${metricLabels[item.metric_key] || item.label}`,
-                color: chartColors[index % chartColors.length],
+                color: colorForSeries(item.provider, item.metric_key),
                 data: densePoints,
             });
         });
