@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import json
 import shlex
 from typing import Mapping
+from urllib.parse import urlparse
 
 IMPORTED_HEADER_ALLOWLIST = {
     "accept",
@@ -180,3 +181,26 @@ def format_cookie_header(cookies: Mapping[str, str]) -> str:
         for name, value in cookies.items()
         if str(name).strip() and str(value).strip()
     )
+
+
+def format_cookie_header_for_url(cookie_jar: object, url: str) -> str:
+    parsed = urlparse(url)
+    host = parsed.hostname or ""
+    path = parsed.path or "/"
+    pairs: dict[str, str] = {}
+
+    for cookie in cookie_jar:
+        cookie_domain = getattr(cookie, "domain", "") or ""
+        cookie_path = getattr(cookie, "path", "") or "/"
+        if not _domain_matches(host, cookie_domain):
+            continue
+        if not path.startswith(cookie_path):
+            continue
+        pairs[str(cookie.name)] = str(cookie.value)
+
+    return format_cookie_header(pairs)
+
+
+def _domain_matches(host: str, cookie_domain: str) -> bool:
+    normalized = cookie_domain.lstrip(".")
+    return not normalized or host == normalized or host.endswith(f".{normalized}")

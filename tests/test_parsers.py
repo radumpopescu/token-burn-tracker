@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from http.cookiejar import Cookie, CookieJar
 import unittest
 
 from token_burn.parsers import parse_claude_usage_json, parse_codex_usage_json
@@ -7,6 +8,7 @@ from token_burn.request_imports import (
     decode_secret_payload,
     encode_secret_payload,
     format_cookie_header,
+    format_cookie_header_for_url,
     parse_cookie_header,
     parse_curl_import,
 )
@@ -139,6 +141,49 @@ class ParserTests(unittest.TestCase):
         cookies = parse_cookie_header(payload["cookie_header"])
         self.assertEqual(cookies, {"a": "1", "b": "2"})
         self.assertEqual(format_cookie_header(cookies), "a=1; b=2")
+
+    def test_format_cookie_header_for_url_handles_duplicate_names(self) -> None:
+        jar = CookieJar()
+        jar.set_cookie(
+            _cookie(name="__cf_bm", value="one", domain=".chatgpt.com", path="/")
+        )
+        jar.set_cookie(
+            _cookie(name="__cf_bm", value="two", domain="chatgpt.com", path="/backend-api")
+        )
+        jar.set_cookie(
+            _cookie(name="sessionKey", value="aaa", domain=".claude.ai", path="/")
+        )
+        jar.set_cookie(
+            _cookie(name="sessionKey", value="bbb", domain="claude.ai", path="/api")
+        )
+
+        chatgpt_header = format_cookie_header_for_url(jar, "https://chatgpt.com/backend-api/wham/usage")
+        claude_header = format_cookie_header_for_url(jar, "https://claude.ai/api/organizations/test/usage")
+
+        self.assertEqual(chatgpt_header, "__cf_bm=two")
+        self.assertEqual(claude_header, "sessionKey=bbb")
+
+
+def _cookie(name: str, value: str, domain: str, path: str) -> Cookie:
+    return Cookie(
+        version=0,
+        name=name,
+        value=value,
+        port=None,
+        port_specified=False,
+        domain=domain,
+        domain_specified=True,
+        domain_initial_dot=domain.startswith("."),
+        path=path,
+        path_specified=True,
+        secure=False,
+        expires=None,
+        discard=True,
+        comment=None,
+        comment_url=None,
+        rest={},
+        rfc2109=False,
+    )
 
 
 if __name__ == "__main__":

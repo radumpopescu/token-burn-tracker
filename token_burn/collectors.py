@@ -18,7 +18,7 @@ from .parsers import (
 from .request_imports import (
     decode_secret_payload,
     encode_secret_payload,
-    format_cookie_header,
+    format_cookie_header_for_url,
     normalize_authorization,
     parse_cookie_header,
 )
@@ -114,7 +114,7 @@ async def _collect_json_api(config: ProviderConfig, secret_value: str, recorded_
         }
     )
 
-    latest_cookie_header = format_cookie_header(dict(client.cookies.items()))
+    latest_cookie_header = format_cookie_header_for_url(client.cookies.jar, config.usage_url)
     if latest_cookie_header and latest_cookie_header != cookie_header:
         secret_payload["cookie_header"] = latest_cookie_header
 
