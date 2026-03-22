@@ -146,11 +146,44 @@
         }
         .provider-label-group.claude { border-color: rgba(255,122,24,0.22); }
         .provider-label-group.codex { border-color: rgba(49,196,255,0.22); }
+        .visibility-group-header {
+            display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px;
+        }
+        .visibility-group-header .actions { gap: 6px; }
+        .visibility-btn {
+            padding: 6px 11px; border-radius: 999px; font-size: 0.76rem;
+        }
+        .visibility-hint {
+            color: var(--muted); font-size: 0.82rem; margin: 0 0 12px;
+        }
+        .visibility-chip-grid {
+            display: flex; flex-wrap: wrap; gap: 8px;
+        }
+        .visibility-chip {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 8px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.04); color: var(--text); font-size: 0.78rem;
+            cursor: pointer;
+        }
+        .visibility-chip.off {
+            opacity: 0.5; background: transparent; color: var(--muted);
+        }
+        .visibility-chip-dot {
+            width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; background: var(--ok);
+            box-shadow: 0 0 0 3px rgba(57,214,154,0.12);
+        }
+        .visibility-chip.off .visibility-chip-dot {
+            background: var(--muted); box-shadow: none;
+        }
+        .visibility-summary {
+            color: var(--muted); font-size: 0.74rem; white-space: nowrap;
+        }
 
         @media (max-width: 640px) {
             .fields { grid-template-columns: 1fr; }
             .provider-grid { grid-template-columns: 1fr; }
             .topbar { flex-direction: column; gap: 10px; align-items: flex-start; }
+            .visibility-group-header { flex-direction: column; align-items: flex-start; }
         }
     </style>
 </head>
@@ -305,6 +338,45 @@
 
         <!-- Metric labels -->
         {% if known_metrics %}
+        <div class="section open" id="section-visibility">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2>Metric visibility</h2>
+                <span class="section-chevron">&#9660;</span>
+            </div>
+            <div class="section-body">
+                <p class="visibility-hint">Hide dashboard cards and chart series from this browser. These visibility choices are saved locally and apply on the main page too.</p>
+                {% for spec in provider_specs %}
+                {% set provider_metrics = known_metrics | selectattr('provider', 'equalto', spec.provider) | list %}
+                {% if provider_metrics %}
+                <div class="provider-label-group {{ spec.provider }}" data-provider-group="{{ spec.provider }}">
+                    <div class="visibility-group-header">
+                        <h3>{{ spec.display_name }}</h3>
+                        <div class="actions">
+                            <span class="visibility-summary" id="visibility-summary-{{ spec.provider }}"></span>
+                            <button type="button" class="ghost visibility-btn" onclick="setProviderMetricVisibility('{{ spec.provider }}', true)">Show all</button>
+                            <button type="button" class="ghost visibility-btn" onclick="setProviderMetricVisibility('{{ spec.provider }}', false)">Hide all</button>
+                        </div>
+                    </div>
+                    <div class="visibility-chip-grid">
+                        {% for m in provider_metrics %}
+                        <button
+                            type="button"
+                            class="visibility-chip"
+                            data-provider="{{ spec.provider }}"
+                            data-metric-key="{{ m.key }}"
+                            onclick="toggleMetricVisibility('{{ spec.provider }}', '{{ m.key }}')"
+                        >
+                            <span class="visibility-chip-dot"></span>
+                            <span>{{ metric_labels.get(m.key, m.label) or m.label }}</span>
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+
         <div class="section" id="section-labels">
             <div class="section-header" onclick="toggleSection(this)">
                 <h2>Metric labels</h2>
@@ -337,11 +409,103 @@
     </div>
 
     <script>
+    const dashboardStorageKey = "token-burn.dashboard.preferences.v4";
+
     function toggleSection(header) {
         header.closest(".section").classList.toggle("open");
     }
 
     document.querySelectorAll(".error-hint").forEach(el => el.closest(".section").classList.add("open"));
+
+    function getDashboardPreferences() {
+        try {
+            const raw = window.localStorage.getItem(dashboardStorageKey);
+            if (!raw) return {};
+            const parsed = JSON.parse(raw);
+            return parsed && typeof parsed === "object" ? parsed : {};
+        } catch {
+            return {};
+        }
+    }
+
+    function saveDashboardPreferences(next) {
+        try {
+            window.localStorage.setItem(dashboardStorageKey, JSON.stringify(next));
+        } catch {}
+    }
+
+    function getHiddenMetricSets() {
+        const prefs = getDashboardPreferences();
+        return {
+            prefs,
+            hiddenUsageKeys: new Set(Array.isArray(prefs.hiddenUsageKeys) ? prefs.hiddenUsageKeys.filter(v => typeof v === "string") : []),
+            hiddenSeriesKeys: new Set(Array.isArray(prefs.hiddenSeriesKeys) ? prefs.hiddenSeriesKeys.filter(v => typeof v === "string") : []),
+        };
+    }
+
+    function persistHiddenMetricSets(prefs, hiddenUsageKeys, hiddenSeriesKeys) {
+        saveDashboardPreferences({
+            ...prefs,
+            hiddenUsageKeys: Array.from(hiddenUsageKeys),
+            hiddenSeriesKeys: Array.from(hiddenSeriesKeys),
+        });
+    }
+
+    function metricStorageKey(provider, metricKey) {
+        return `${provider}:${metricKey}`;
+    }
+
+    function toggleMetricVisibility(provider, metricKey) {
+        const key = metricStorageKey(provider, metricKey);
+        const { prefs, hiddenUsageKeys, hiddenSeriesKeys } = getHiddenMetricSets();
+        const willShow = hiddenUsageKeys.has(key);
+        if (willShow) {
+            hiddenUsageKeys.delete(key);
+            hiddenSeriesKeys.delete(key);
+        } else {
+            hiddenUsageKeys.add(key);
+            hiddenSeriesKeys.add(key);
+        }
+        persistHiddenMetricSets(prefs, hiddenUsageKeys, hiddenSeriesKeys);
+        renderMetricVisibility();
+    }
+
+    function setProviderMetricVisibility(provider, visible) {
+        const { prefs, hiddenUsageKeys, hiddenSeriesKeys } = getHiddenMetricSets();
+        let changed = false;
+        document.querySelectorAll(`.visibility-chip[data-provider="${provider}"]`).forEach((chip) => {
+            const key = metricStorageKey(provider, chip.dataset.metricKey);
+            if (visible) {
+                const removedUsage = hiddenUsageKeys.delete(key);
+                const removedSeries = hiddenSeriesKeys.delete(key);
+                if (removedUsage || removedSeries) changed = true;
+            } else if (!hiddenUsageKeys.has(key) || !hiddenSeriesKeys.has(key)) {
+                hiddenUsageKeys.add(key);
+                hiddenSeriesKeys.add(key);
+                changed = true;
+            }
+        });
+        if (!changed) return;
+        persistHiddenMetricSets(prefs, hiddenUsageKeys, hiddenSeriesKeys);
+        renderMetricVisibility();
+    }
+
+    function renderMetricVisibility() {
+        const { hiddenUsageKeys } = getHiddenMetricSets();
+        document.querySelectorAll(".visibility-chip").forEach((chip) => {
+            const key = metricStorageKey(chip.dataset.provider, chip.dataset.metricKey);
+            chip.classList.toggle("off", hiddenUsageKeys.has(key));
+        });
+        document.querySelectorAll("[data-provider-group]").forEach((group) => {
+            const provider = group.dataset.providerGroup;
+            const chips = Array.from(group.querySelectorAll(".visibility-chip"));
+            const hiddenCount = chips.filter((chip) => hiddenUsageKeys.has(metricStorageKey(provider, chip.dataset.metricKey))).length;
+            const summary = document.getElementById(`visibility-summary-${provider}`);
+            if (summary) {
+                summary.textContent = hiddenCount ? `${hiddenCount} hidden` : "All visible";
+            }
+        });
+    }
 
     async function testProvider(provider, btn) {
         const resultEl = document.getElementById("test-result-" + provider);
@@ -386,6 +550,8 @@
             resultEl.innerHTML = '<span class="test-result fail">\u2717 Error</span>';
         }
     }
+
+    renderMetricVisibility();
     </script>
 </body>
 </html>

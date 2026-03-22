@@ -79,14 +79,15 @@
         }
 
         /* Usage groups */
+        #usage-container { margin-bottom: 14px; }
         .provider-columns {
-            display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 20px;
+            display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 0;
         }
         .provider-panel {
             --provider-accent: var(--accent);
             --provider-accent-soft: rgba(255,122,24,0.18);
             background: rgba(15,30,49,0.86); border: 1px solid var(--line);
-            border-radius: 18px; padding: 16px;
+            border-radius: 16px; padding: 12px 13px;
         }
         .provider-panel.claude {
             --provider-accent: #ff7a18;
@@ -101,17 +102,17 @@
             box-shadow: inset 0 1px 0 rgba(49,196,255,0.04);
         }
         .provider-panel-header {
-            display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px;
+            display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px;
         }
         .provider-panel-kicker {
-            font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
-            color: var(--provider-accent); margin-bottom: 4px; font-weight: 700;
+            font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.08em;
+            color: var(--provider-accent); margin-bottom: 3px; font-weight: 700;
         }
         .provider-panel-title {
-            font-size: 1.05rem; font-weight: 700; letter-spacing: -0.02em; margin: 0;
+            font-size: 0.98rem; font-weight: 700; letter-spacing: -0.02em; margin: 0;
         }
         .provider-panel-subtitle {
-            margin: 4px 0 0; color: var(--muted); font-size: 0.8rem;
+            margin: 3px 0 0; color: var(--muted); font-size: 0.74rem;
         }
         .provider-panel-actions { display: flex; gap: 8px; flex-wrap: wrap; }
         .provider-panel-btn {
@@ -121,32 +122,32 @@
             color: var(--text); font-size: 0.72rem; cursor: pointer;
         }
         .provider-panel-btn.hidden { border-color: rgba(255,255,255,0.08); color: var(--muted); }
-        .provider-panel-groups { display: grid; gap: 12px; }
+        .provider-panel-groups { display: grid; gap: 10px; }
         .provider-panel-empty {
-            padding: 18px 16px; border-radius: 14px; border: 1px dashed rgba(255,255,255,0.1);
-            background: rgba(255,255,255,0.02); color: var(--muted); font-size: 0.84rem;
+            padding: 14px 12px; border-radius: 12px; border: 1px dashed rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.02); color: var(--muted); font-size: 0.8rem;
         }
         .usage-group { margin-bottom: 0; }
         .usage-group-title {
-            font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em;
-            color: var(--muted); margin: 0 0 8px; font-weight: 600;
+            font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em;
+            color: var(--muted); margin: 0 0 6px; font-weight: 700;
         }
         .usage-group-subtitle {
-            font-size: 0.72rem; color: var(--muted); margin: -4px 0 8px; font-weight: 400;
+            display: none;
         }
         .usage-grid {
-            display: grid; grid-template-columns: 1fr; gap: 10px;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px;
         }
         .usage-item {
             background: rgba(15,30,49,0.86); border: 1px solid var(--line);
-            border-radius: 14px; padding: 12px 14px;
+            border-radius: 12px; padding: 10px 11px;
         }
         .provider-panel.claude .usage-item { border-color: rgba(255,122,24,0.16); }
         .provider-panel.codex .usage-item { border-color: rgba(49,196,255,0.16); }
         .usage-item-header {
             display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 3px;
         }
-        .usage-item-label { font-size: 0.82rem; color: var(--text); font-weight: 500; }
+        .usage-item-label { font-size: 0.78rem; color: var(--text); font-weight: 600; }
         .usage-item-actions {
             display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0;
         }
@@ -155,23 +156,23 @@
             min-height: 24px; padding: 0 8px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.1);
             background: rgba(255,255,255,0.03); color: var(--muted); font-size: 0.68rem; cursor: pointer;
         }
-        .usage-item-pct { font-size: 0.78rem; color: var(--muted); font-weight: 600; margin-bottom: 5px; }
+        .usage-item-pct { font-size: 0.74rem; color: var(--muted); font-weight: 600; margin-bottom: 5px; }
         .usage-bar-track { height: 7px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; }
         .usage-bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
         .usage-bar-fill.low { background: var(--accent-2); }
         .usage-bar-fill.mid { background: var(--accent); }
         .usage-bar-fill.high { background: var(--error); }
         .usage-item-footer {
-            display: flex; justify-content: space-between; margin-top: 5px;
+            display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-top: 5px;
             font-size: 0.7rem; color: var(--muted);
         }
         .usage-item-pace {
-            margin-top: 10px; padding: 10px 11px; border-radius: 12px;
+            margin-top: 8px; padding: 8px 9px; border-radius: 10px;
             border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03);
         }
         .pace-stats {
             display: flex; justify-content: space-between; gap: 12px; margin-bottom: 6px;
-            font-size: 0.72rem; color: var(--muted);
+            font-size: 0.68rem; color: var(--muted);
         }
         .pace-line {
             position: relative; height: 8px; border-radius: 999px; overflow: hidden;
@@ -185,13 +186,13 @@
         .pace-line-used { background: var(--provider-accent); opacity: 0.92; }
         .pace-caption {
             display: flex; justify-content: space-between; gap: 12px; align-items: baseline;
-            font-size: 0.72rem;
+            font-size: 0.68rem;
         }
-        .pace-caption strong { color: var(--text); font-size: 0.76rem; }
+        .pace-caption strong { color: var(--text); font-size: 0.72rem; }
         .pace-caption span { color: var(--muted); }
         .pace-trend {
             display: inline-flex; align-items: center; gap: 6px; margin-bottom: 6px;
-            padding: 4px 8px; border-radius: 999px; font-size: 0.68rem; font-weight: 700;
+            padding: 3px 7px; border-radius: 999px; font-size: 0.64rem; font-weight: 700;
             letter-spacing: 0.01em;
         }
         .pace-trend.ahead {
@@ -826,8 +827,8 @@
         const usage = latestUsage;
         const container = document.getElementById("usage-container");
         const providerPanels = {
-            claude: { title: "Claude", kicker: "Orange lane", subtitle: "Usage windows and burn pacing", groups: {} },
-            codex: { title: "Codex", kicker: "Blue lane", subtitle: "Usage windows and burn pacing", groups: {} },
+            claude: { title: "Claude", kicker: "Provider", subtitle: "Current usage and time left", groups: {} },
+            codex: { title: "Codex", kicker: "Provider", subtitle: "Current usage and time left", groups: {} },
         };
 
         Object.entries(usage).forEach(([provider, snapshot]) => {
@@ -840,7 +841,7 @@
                 const providerPanel = providerPanels[provider] || (providerPanels[provider] = {
                     title: providerDisplayName(provider),
                     kicker: "Provider",
-                    subtitle: "Usage windows and burn pacing",
+                    subtitle: "Current usage and time left",
                     groups: {},
                 });
                 const displayLabel = metricLabels[m.metric_key] || m.label;
