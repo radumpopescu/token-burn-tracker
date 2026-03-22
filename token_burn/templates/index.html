@@ -33,231 +33,270 @@
         .page {
             max-width: 1440px;
             margin: 0 auto;
-            padding: 32px 24px 48px;
+            padding: 24px 24px 48px;
         }
-        .topbar, .filters, .cards, .charts, .table-card { display: grid; gap: 16px; }
         .topbar {
-            grid-template-columns: 1.4fr auto;
-            align-items: start;
-            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            gap: 16px;
         }
-        .headline h1 {
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .topbar-left h1 {
             margin: 0;
-            font-size: clamp(2rem, 3vw, 3rem);
-            line-height: 1.05;
-            letter-spacing: -0.03em;
+            font-size: 1.4rem;
+            letter-spacing: -0.02em;
         }
-        .headline p {
-            margin: 10px 0 0;
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            min-height: 32px;
+            padding: 0 12px;
+            border-radius: 10px;
+            border: 1px solid var(--line);
+            background: rgba(255,255,255,0.02);
+            font-size: 0.78rem;
             color: var(--muted);
-            max-width: 60ch;
         }
         .topbar-actions {
             display: flex;
-            gap: 12px;
+            gap: 10px;
             align-items: center;
         }
-        .pill, .link-btn, button, select, input {
-            border-radius: 12px;
-            border: 1px solid var(--line);
-        }
-        .pill, .link-btn {
+        .link-btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-height: 42px;
+            min-height: 36px;
             padding: 0 14px;
             text-decoration: none;
             color: var(--text);
-            background: rgba(255, 255, 255, 0.02);
+            border-radius: 10px;
+            border: 1px solid var(--line);
+            background: rgba(255,255,255,0.02);
+            font-size: 0.85rem;
         }
         .link-btn.primary {
             background: linear-gradient(135deg, var(--accent), #ff9a3d);
-            border-color: rgba(255, 122, 24, 0.55);
+            border-color: rgba(255,122,24,0.55);
             color: #180d03;
             font-weight: 700;
         }
+
+        /* Filters row */
         .filters {
-            grid-template-columns: repeat(6, minmax(0, 1fr));
-            background: rgba(15, 30, 49, 0.82);
-            border: 1px solid var(--line);
-            border-radius: 24px;
-            padding: 16px;
-            margin-bottom: 24px;
-            backdrop-filter: blur(10px);
+            display: flex;
+            gap: 10px;
+            align-items: end;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
         }
-        .field {
-            display: grid;
-            gap: 8px;
-        }
-        .field label {
-            font-size: 0.78rem;
-            letter-spacing: 0.04em;
+        .filters .field { display: grid; gap: 4px; }
+        .filters label {
+            font-size: 0.7rem;
             text-transform: uppercase;
+            letter-spacing: 0.04em;
             color: var(--muted);
         }
-        select, input {
-            min-height: 44px;
+        .filters select, .filters input {
+            min-height: 36px;
             background: var(--panel-soft);
             color: var(--text);
-            padding: 0 12px;
+            padding: 0 10px;
+            border-radius: 8px;
+            border: 1px solid var(--line);
+            font: inherit;
+            font-size: 0.85rem;
         }
-        button {
-            min-height: 44px;
-            padding: 0 18px;
+        .filters button {
+            min-height: 36px;
+            padding: 0 14px;
             cursor: pointer;
             background: linear-gradient(135deg, var(--accent), #ff9a3d);
-            border-color: rgba(255, 122, 24, 0.65);
+            border-color: rgba(255,122,24,0.65);
             color: #1a0f05;
             font-weight: 700;
+            border-radius: 8px;
+            border: 1px solid rgba(255,122,24,0.65);
+            font: inherit;
+            font-size: 0.85rem;
         }
-        .cards {
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            margin-bottom: 24px;
+
+        /* Usage limits section - Claude website style */
+        .usage-section {
+            margin-bottom: 20px;
         }
-        .card, .table-card {
-            background: rgba(15, 30, 49, 0.86);
+        .usage-section h2 {
+            margin: 0 0 12px;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+        .usage-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 12px;
+        }
+        .usage-item {
+            background: rgba(15,30,49,0.86);
             border: 1px solid var(--line);
-            border-radius: 24px;
-            padding: 20px;
-            backdrop-filter: blur(12px);
+            border-radius: 14px;
+            padding: 14px 16px;
         }
-        .metric-label {
-            color: var(--muted);
-            font-size: 0.82rem;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
+        .usage-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
         }
-        .metric-value {
-            font-size: 2rem;
-            font-weight: 800;
-            letter-spacing: -0.03em;
-            margin-top: 8px;
-        }
-        .metric-subtext {
-            margin-top: 12px;
-            color: var(--muted);
-            font-size: 0.92rem;
-            line-height: 1.5;
-        }
-        .timestamp-block {
-            display: inline-flex;
-            flex-direction: column;
-            gap: 2px;
-        }
-        .timestamp-main {
+        .usage-item-label {
+            font-size: 0.85rem;
             color: var(--text);
+            font-weight: 500;
         }
-        .timestamp-sub {
+        .usage-item-provider {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
             color: var(--muted);
-            font-size: 0.82rem;
+            background: rgba(255,255,255,0.05);
+            padding: 2px 8px;
+            border-radius: 6px;
         }
-        .state-ok { color: var(--ok); }
-        .state-error { color: var(--error); }
+        .usage-item-pct {
+            font-size: 0.8rem;
+            color: var(--muted);
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .usage-bar-track {
+            height: 8px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .usage-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.4s ease;
+        }
+        .usage-bar-fill.low { background: var(--accent-2); }
+        .usage-bar-fill.mid { background: var(--accent); }
+        .usage-bar-fill.high { background: var(--error); }
+        .usage-item-footer {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 6px;
+            font-size: 0.75rem;
+            color: var(--muted);
+        }
+
+        /* Charts */
         .charts {
+            display: grid;
             grid-template-columns: 1.5fr 1fr;
-            margin-bottom: 24px;
-        }
-        .chart-card.full-span {
-            grid-column: 1 / -1;
+            gap: 12px;
+            margin-bottom: 20px;
         }
         .chart-card {
-            background: rgba(15, 30, 49, 0.86);
+            background: rgba(15,30,49,0.86);
             border: 1px solid var(--line);
-            border-radius: 24px;
-            padding: 20px;
-            min-height: 420px;
+            border-radius: 16px;
+            padding: 16px;
+            min-height: 360px;
         }
-        .chart-card h2, .table-card h2 {
-            margin: 0 0 8px;
-            font-size: 1.05rem;
+        .chart-card.full-span { grid-column: 1 / -1; }
+        .chart-card h2 {
+            margin: 0 0 4px;
+            font-size: 0.95rem;
         }
-        .chart-meta, .table-meta {
-            margin: 0 0 18px;
+        .chart-meta {
+            margin: 0 0 12px;
             color: var(--muted);
-            font-size: 0.9rem;
+            font-size: 0.82rem;
         }
         .chart-wrap {
             position: relative;
-            min-height: 320px;
+            min-height: 280px;
         }
-        table {
-            width: 100%;
-            border-collapse: collapse;
+
+        /* Table */
+        .table-card {
+            background: rgba(15,30,49,0.86);
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            padding: 16px;
         }
+        .table-card h2 { margin: 0 0 4px; font-size: 0.95rem; }
+        .table-meta { margin: 0 0 12px; color: var(--muted); font-size: 0.82rem; }
+        table { width: 100%; border-collapse: collapse; }
         th, td {
             text-align: left;
-            padding: 14px 10px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            padding: 10px 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
             vertical-align: top;
         }
         th {
-            font-size: 0.76rem;
+            font-size: 0.72rem;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             color: var(--muted);
         }
-        td {
-            font-size: 0.92rem;
-            color: var(--text);
-        }
+        td { font-size: 0.85rem; }
         .provider-chip {
             display: inline-flex;
             align-items: center;
-            gap: 8px;
             border-radius: 999px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            padding: 6px 10px;
-            background: rgba(255, 255, 255, 0.04);
-            font-size: 0.82rem;
+            border: 1px solid rgba(255,255,255,0.08);
+            padding: 4px 8px;
+            background: rgba(255,255,255,0.04);
+            font-size: 0.75rem;
         }
         .reason-chip {
             display: inline-flex;
-            align-items: center;
             border-radius: 999px;
-            padding: 5px 10px;
-            font-size: 0.75rem;
+            padding: 4px 8px;
+            font-size: 0.7rem;
             text-transform: uppercase;
             letter-spacing: 0.04em;
-            background: rgba(255, 255, 255, 0.06);
+            background: rgba(255,255,255,0.06);
             color: var(--muted);
-        }
-        .empty {
-            color: var(--muted);
-            padding: 36px 0;
         }
         .table-time {
             display: inline-flex;
             flex-direction: column;
-            gap: 2px;
+            gap: 1px;
         }
-        .table-time strong {
-            font-weight: 600;
-            color: var(--text);
-        }
-        .table-time span {
-            font-size: 0.8rem;
+        .table-time strong { font-weight: 600; color: var(--text); font-size: 0.82rem; }
+        .table-time span { font-size: 0.72rem; color: var(--muted); }
+        .empty { color: var(--muted); padding: 24px 0; }
+        .no-data-msg {
             color: var(--muted);
+            padding: 16px;
+            text-align: center;
+            font-size: 0.9rem;
         }
+
         @media (max-width: 1100px) {
-            .filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
             .charts { grid-template-columns: 1fr; }
         }
         @media (max-width: 760px) {
-            .page { padding: 18px 14px 32px; }
-            .topbar { grid-template-columns: 1fr; }
-            .topbar-actions { flex-wrap: wrap; }
-            .filters { grid-template-columns: 1fr; }
+            .page { padding: 14px 12px 32px; }
+            .topbar { flex-direction: column; align-items: flex-start; }
+            .usage-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
     <div class="page">
         <section class="topbar">
-            <div class="headline">
-                <div class="pill">Poll every {{ poll_interval_seconds }}s, heartbeat {{ heartbeat_interval_seconds }}s</div>
-                <h1>Token burn history for Claude and Codex.</h1>
-                <p>The server polls the authenticated JSON usage endpoints, writes only changes plus hourly heartbeats, and keeps everything in SQLite for filtering and charting.</p>
+            <div class="topbar-left">
+                <h1>Token Burn</h1>
+                <span class="pill">Poll {{ poll_interval_seconds }}s / HB {{ heartbeat_interval_seconds }}s</span>
             </div>
             <div class="topbar-actions">
                 <a class="link-btn" href="/healthz">Health</a>
@@ -269,7 +308,7 @@
             <div class="field">
                 <label for="provider">Provider</label>
                 <select id="provider" name="provider">
-                    <option value="all" {% if filters.provider == "all" %}selected{% endif %}>All providers</option>
+                    <option value="all" {% if filters.provider == "all" %}selected{% endif %}>All</option>
                     {% for item in provider_choices %}
                     <option value="{{ item.provider }}" {% if filters.provider == item.provider %}selected{% endif %}>{{ item.display_name }}</option>
                     {% endfor %}
@@ -278,7 +317,7 @@
             <div class="field">
                 <label for="period">Period</label>
                 <select id="period" name="period">
-                    {% for value, label in [("24h","Last 24 hours"),("7d","Last 7 days"),("30d","Last 30 days"),("90d","Last 90 days"),("all","All time"),("custom","Custom")] %}
+                    {% for value, label in [("24h","24h"),("7d","7d"),("30d","30d"),("90d","90d"),("all","All"),("custom","Custom")] %}
                     <option value="{{ value }}" {% if filters.period == value %}selected{% endif %}>{{ label }}</option>
                     {% endfor %}
                 </select>
@@ -291,74 +330,38 @@
                 <label for="end">End</label>
                 <input id="end" name="end" type="datetime-local" value="{{ filters.end }}">
             </div>
-            <div class="field">
-                <label>&nbsp;</label>
-                <button type="submit">Apply filters</button>
-            </div>
-            <div class="field">
-                <label>&nbsp;</label>
-                <a class="link-btn" href="/">Reset</a>
-            </div>
+            <button type="submit">Apply</button>
+            <a class="link-btn" href="/" style="min-height:36px;font-size:0.85rem;">Reset</a>
         </form>
 
-        <section class="cards" id="latest-cards">
-            {% for provider, snapshot in latest.items() %}
-            <article class="card">
-                <div class="metric-label">{{ provider|upper }}</div>
-                <div class="metric-value">{{ snapshot.plan_name or provider|title }}</div>
-                <div class="metric-subtext">{{ snapshot.summary }}</div>
-                {% set state = states.get(provider, {}) %}
-                <div class="metric-subtext">
-                    Last checked:
-                    <span class="{% if state.get('last_error') %}state-error{% else %}state-ok{% endif %}">
-                        {% if state.get("last_checked_at") %}
-                        <span class="timestamp-block" data-datetime="{{ state.get('last_checked_at') }}">
-                            <span class="timestamp-main">{{ state.get("last_checked_at") }}</span>
-                            <span class="timestamp-sub"></span>
-                        </span>
-                        {% else %}
-                        never
-                        {% endif %}
-                    </span>
-                </div>
-            </article>
-            {% endfor %}
-            {% if not latest %}
-            <article class="card">
-                <div class="metric-label">No snapshots yet</div>
-                <div class="metric-value">Configure cookies</div>
-                <div class="metric-subtext">Open settings, paste the Cookie headers from Claude and ChatGPT usage requests, then trigger a manual poll.</div>
-            </article>
-            {% endif %}
+        <!-- Current usage limits - Claude website style -->
+        <section class="usage-section" id="usage-section">
+            <h2>Plan usage limits</h2>
+            <div class="usage-grid" id="usage-grid">
+                <div class="no-data-msg">Loading usage data...</div>
+            </div>
         </section>
 
         <section class="charts">
             <article class="chart-card">
-                <h2>Usage Utilization</h2>
-                <p class="chart-meta">Percent used over time for each tracked window and metered feature.</p>
+                <h2>Usage over time</h2>
+                <p class="chart-meta">Percent used per tracked window over the selected period.</p>
                 <div class="chart-wrap">
                     <canvas id="utilization-chart"></canvas>
                 </div>
             </article>
             <article class="chart-card">
-                <h2>Recorded Changes</h2>
-                <p class="chart-meta">How many snapshots were written per day after deduplication.</p>
+                <h2>Recorded changes</h2>
+                <p class="chart-meta">Snapshots written per day after deduplication.</p>
                 <div class="chart-wrap">
                     <canvas id="changes-chart"></canvas>
-                </div>
-            </article>
-            <article class="chart-card full-span">
-                <h2>Current Window Balance</h2>
-                <p class="chart-meta">For each tracked limit window, compare what you have already used versus what is left right now.</p>
-                <div class="chart-wrap">
-                    <canvas id="balance-chart"></canvas>
                 </div>
             </article>
         </section>
 
         <section class="table-card">
-            <h2>Snapshot History</h2>
-            <p class="table-meta">Latest 250 stored snapshots in the selected date range.</p>
+            <h2>Snapshot history</h2>
+            <p class="table-meta">Latest 250 stored snapshots in the selected range.</p>
             <div style="overflow-x:auto;">
                 <table>
                     <thead>
@@ -371,7 +374,7 @@
                         </tr>
                     </thead>
                     <tbody id="history-body">
-                        <tr><td colspan="5" class="empty">Loading history…</td></tr>
+                        <tr><td colspan="5" class="empty">Loading...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -379,20 +382,9 @@
     </div>
 
     <script>
-    const chartColors = [
-        "#ff7a18",
-        "#31c4ff",
-        "#7ce38b",
-        "#c38cff",
-        "#ffd166",
-        "#ff6b6b",
-        "#7bdff2",
-        "#b8f2e6"
-    ];
+    const chartColors = ["#ff7a18","#31c4ff","#7ce38b","#c38cff","#ffd166","#ff6b6b","#7bdff2","#b8f2e6"];
 
-    let utilizationChart;
-    let changesChart;
-    let balanceChart;
+    let utilizationChart, changesChart;
 
     const filtersForm = document.getElementById("filters-form");
     const providerField = document.getElementById("provider");
@@ -409,107 +401,108 @@
         return params.toString();
     }
 
-    function safeDate(value) {
-        return value ? new Date(value) : null;
+    function safeDate(v) { return v ? new Date(v) : null; }
+
+    function fmtDate(v) {
+        const d = safeDate(v);
+        if (!d || Number.isNaN(d.getTime())) return "\u2014";
+        return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(d);
     }
 
-    function fmtDate(value) {
-        const date = safeDate(value);
-        if (!date || Number.isNaN(date.getTime())) return "—";
-        return new Intl.DateTimeFormat(undefined, {
-            dateStyle: "medium",
-            timeStyle: "short"
-        }).format(date);
-    }
-
-    function fmtDateCompact(value) {
-        const date = safeDate(value);
-        if (!date || Number.isNaN(date.getTime())) return "—";
-        return new Intl.DateTimeFormat(undefined, {
-            month: "short",
-            day: "numeric",
-            hour: "numeric",
-            minute: "2-digit"
-        }).format(date);
-    }
-
-    function fmtRelative(value) {
-        const date = safeDate(value);
-        if (!date || Number.isNaN(date.getTime())) return "";
-        const seconds = Math.round((date.getTime() - Date.now()) / 1000);
-        const absSeconds = Math.abs(seconds);
-        if (absSeconds < 60) return seconds >= 0 ? "in under a minute" : "just now";
-        const ranges = [
-            ["day", 86400],
-            ["hour", 3600],
-            ["minute", 60]
-        ];
-        const formatter = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+    function fmtRelative(v) {
+        const d = safeDate(v);
+        if (!d || Number.isNaN(d.getTime())) return "";
+        const sec = Math.round((d.getTime() - Date.now()) / 1000);
+        const abs = Math.abs(sec);
+        if (abs < 60) return sec >= 0 ? "in under a minute" : "just now";
+        const ranges = [["day",86400],["hour",3600],["minute",60]];
+        const fmt = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
         for (const [unit, size] of ranges) {
-            if (absSeconds >= size || unit === "minute") {
-                return formatter.format(Math.round(seconds / size), unit);
-            }
+            if (abs >= size || unit === "minute") return fmt.format(Math.round(sec / size), unit);
         }
         return "";
     }
 
-    function timestampBlock(value) {
-        return `
-            <span class="timestamp-block">
-                <span class="timestamp-main">${fmtDate(value)}</span>
-                <span class="timestamp-sub">${fmtRelative(value)}</span>
-            </span>
-        `;
+    function fmtDuration(v) {
+        const d = safeDate(v);
+        if (!d || Number.isNaN(d.getTime())) return "";
+        const sec = Math.round((d.getTime() - Date.now()) / 1000);
+        const abs = Math.abs(sec);
+        if (abs < 60) return "< 1 min";
+        if (abs < 3600) return `${Math.round(abs / 60)} min`;
+        const h = Math.floor(abs / 3600);
+        const m = Math.round((abs % 3600) / 60);
+        return m > 0 ? `${h} hr ${m} min` : `${h} hr`;
     }
 
-    function metricPointValue(point) {
-        if (point.percent_value !== null && point.percent_value !== undefined) return point.percent_value;
-        if (point.used_value !== null && point.used_value !== undefined) return point.used_value;
+    function barClass(pct) {
+        if (pct >= 80) return "high";
+        if (pct >= 50) return "mid";
+        return "low";
+    }
+
+    function metricPointValue(p) {
+        if (p.percent_value !== null && p.percent_value !== undefined) return p.percent_value;
+        if (p.used_value !== null && p.used_value !== undefined) return p.used_value;
         return null;
     }
 
-    function renderCards(latest, states) {
-        const cards = document.getElementById("latest-cards");
-        const providers = Object.keys(latest);
-        if (!providers.length) {
-            cards.innerHTML = `
-                <article class="card">
-                    <div class="metric-label">No snapshots yet</div>
-                    <div class="metric-value">Configure cookies</div>
-                    <div class="metric-subtext">Open settings, paste the Cookie headers from Claude and ChatGPT usage requests, then trigger a manual poll.</div>
-                </article>
-            `;
+    function renderUsageGrid(latest) {
+        const grid = document.getElementById("usage-grid");
+        const items = [];
+        Object.entries(latest).forEach(([provider, snapshot]) => {
+            (snapshot.metrics || []).forEach((m) => {
+                let pct = m.percent_value;
+                if ((pct === null || pct === undefined) && m.used_value !== null && m.limit_value) {
+                    pct = (m.used_value / m.limit_value) * 100;
+                }
+                if (pct === null || pct === undefined || Number.isNaN(pct)) return;
+                const clamped = Math.max(0, Math.min(100, pct));
+                items.push({ provider, label: m.label, pct: clamped, resets_at: m.resets_at,
+                    used: m.used_value, limit: m.limit_value, unit: m.unit });
+            });
+        });
+
+        if (!items.length) {
+            grid.innerHTML = '<div class="no-data-msg">No usage data yet. Configure providers in Settings.</div>';
             return;
         }
 
-        cards.innerHTML = providers.map((provider) => {
-            const snapshot = latest[provider];
-            const state = states[provider] || {};
-            const stateClass = state.last_error ? "state-error" : "state-ok";
+        grid.innerHTML = items.map(item => {
+            const resetInfo = item.resets_at ? `Resets ${fmtRelative(item.resets_at)} (${fmtDuration(item.resets_at)})` : "";
+            const amountInfo = (item.used !== null && item.used !== undefined && item.limit)
+                ? `${Number.isInteger(item.used) ? item.used : item.used.toFixed(1)}/${Number.isInteger(item.limit) ? item.limit : item.limit.toFixed(1)}${item.unit && item.unit !== "percent" ? " " + item.unit : ""}`
+                : "";
             return `
-                <article class="card">
-                    <div class="metric-label">${provider.toUpperCase()}</div>
-                    <div class="metric-value">${snapshot.plan_name || provider}</div>
-                    <div class="metric-subtext">${snapshot.summary || "No summary available."}</div>
-                    <div class="metric-subtext">Last checked: <span class="${stateClass}">${state.last_checked_at ? timestampBlock(state.last_checked_at) : "never"}</span></div>
-                </article>
+                <div class="usage-item">
+                    <div class="usage-item-header">
+                        <span class="usage-item-label">${item.label}</span>
+                        <span class="usage-item-provider">${item.provider}</span>
+                    </div>
+                    <div class="usage-item-pct">${item.pct.toFixed(1)}% used</div>
+                    <div class="usage-bar-track">
+                        <div class="usage-bar-fill ${barClass(item.pct)}" style="width:${item.pct}%"></div>
+                    </div>
+                    <div class="usage-item-footer">
+                        <span>${amountInfo}</span>
+                        <span>${resetInfo}</span>
+                    </div>
+                </div>
             `;
         }).join("");
     }
 
     function renderUtilizationChart(series) {
         const datasets = series
-            .filter((item) => item.points.some((point) => metricPointValue(point) !== null))
-            .map((item, index) => ({
-                label: `${item.provider.toUpperCase()} · ${item.label}`,
-                data: item.points.map((point) => ({
-                    x: point.recorded_at,
-                    y: metricPointValue(point)
-                })),
-                borderColor: chartColors[index % chartColors.length],
-                backgroundColor: chartColors[index % chartColors.length] + "33",
+            .filter(s => s.points.some(p => metricPointValue(p) !== null))
+            .map((s, i) => ({
+                label: `${s.provider.toUpperCase()} \u00b7 ${s.label}`,
+                data: s.points.map(p => ({ x: p.recorded_at, y: metricPointValue(p) })),
+                borderColor: chartColors[i % chartColors.length],
+                backgroundColor: chartColors[i % chartColors.length] + "33",
                 tension: 0.28,
-                fill: false
+                fill: false,
+                pointRadius: 2
             }));
 
         if (utilizationChart) utilizationChart.destroy();
@@ -517,187 +510,37 @@
             type: "line",
             data: { datasets },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
+                responsive: true, maintainAspectRatio: false,
                 interaction: { mode: "nearest", intersect: false },
                 parsing: false,
                 scales: {
-                    x: {
-                        type: "time",
-                        time: {
-                            tooltipFormat: "PPp",
-                            displayFormats: {
-                                hour: "MMM d, HH:mm",
-                                day: "MMM d"
-                            }
-                        },
-                        ticks: { color: "#8ea6c4" },
-                        grid: { color: "rgba(255,255,255,0.06)" }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        max: 100,
-                        ticks: { color: "#8ea6c4" },
-                        grid: { color: "rgba(255,255,255,0.06)" }
-                    }
+                    x: { type: "time", time: { tooltipFormat: "PPp", displayFormats: { hour: "MMM d, HH:mm", day: "MMM d" } }, ticks: { color: "#8ea6c4" }, grid: { color: "rgba(255,255,255,0.06)" } },
+                    y: { beginAtZero: true, max: 100, ticks: { color: "#8ea6c4", callback: v => v + "%" }, grid: { color: "rgba(255,255,255,0.06)" } }
                 },
-                plugins: {
-                    legend: {
-                        labels: { color: "#f3f6fb", boxWidth: 14 }
-                    }
-                }
-            }
-        });
-    }
-
-    function latestBalanceRows(latest) {
-        const rows = [];
-        Object.entries(latest).forEach(([provider, snapshot]) => {
-            (snapshot.metrics || []).forEach((metric) => {
-                let usedPercent = metric.percent_value;
-                if ((usedPercent === null || usedPercent === undefined) && metric.used_value !== null && metric.limit_value) {
-                    usedPercent = (metric.used_value / metric.limit_value) * 100;
-                }
-                if (usedPercent === null || usedPercent === undefined || Number.isNaN(usedPercent)) {
-                    return;
-                }
-                const clampedUsed = Math.max(0, Math.min(100, usedPercent));
-                rows.push({
-                    provider,
-                    label: `${provider.toUpperCase()} · ${metric.label}`,
-                    usedPercent: clampedUsed,
-                    remainingPercent: Math.max(0, 100 - clampedUsed),
-                    resetsAt: metric.resets_at,
-                    rawUsed: metric.used_value,
-                    rawLimit: metric.limit_value,
-                    unit: metric.unit
-                });
-            });
-        });
-        return rows.sort((a, b) => b.usedPercent - a.usedPercent);
-    }
-
-    function fmtMetricAmounts(row) {
-        if (row.rawUsed !== null && row.rawUsed !== undefined && row.rawLimit !== null && row.rawLimit !== undefined) {
-            const used = Number.isInteger(row.rawUsed) ? row.rawUsed.toString() : row.rawUsed.toFixed(2).replace(/\.?0+$/, "");
-            const limit = Number.isInteger(row.rawLimit) ? row.rawLimit.toString() : row.rawLimit.toFixed(2).replace(/\.?0+$/, "");
-            const suffix = row.unit && row.unit !== "percent" ? ` ${row.unit}` : "";
-            return `${used}/${limit}${suffix}`;
-        }
-        return `${row.usedPercent.toFixed(1)}% used`;
-    }
-
-    function renderBalanceChart(latest) {
-        const rows = latestBalanceRows(latest);
-        if (balanceChart) balanceChart.destroy();
-
-        balanceChart = new Chart(document.getElementById("balance-chart"), {
-            type: "bar",
-            data: {
-                labels: rows.map((row) => row.label),
-                datasets: [
-                    {
-                        label: "Used",
-                        data: rows.map((row) => row.usedPercent),
-                        backgroundColor: "#ff7a18cc",
-                        borderColor: "#ff7a18",
-                        borderWidth: 1,
-                        borderRadius: 8,
-                    },
-                    {
-                        label: "Left",
-                        data: rows.map((row) => row.remainingPercent),
-                        backgroundColor: "#31c4ff66",
-                        borderColor: "#31c4ff",
-                        borderWidth: 1,
-                        borderRadius: 8,
-                    }
-                ]
-            },
-            options: {
-                indexAxis: "y",
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: {
-                        stacked: true,
-                        min: 0,
-                        max: 100,
-                        ticks: {
-                            color: "#8ea6c4",
-                            callback: (value) => `${value}%`
-                        },
-                        grid: { color: "rgba(255,255,255,0.06)" }
-                    },
-                    y: {
-                        stacked: true,
-                        ticks: { color: "#f3f6fb" },
-                        grid: { display: false }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        labels: { color: "#f3f6fb" }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: (context) => {
-                                const row = rows[context.dataIndex];
-                                if (context.datasetIndex === 0) {
-                                    return `Used: ${row.usedPercent.toFixed(1)}% (${fmtMetricAmounts(row)})`;
-                                }
-                                return `Left: ${row.remainingPercent.toFixed(1)}%`;
-                            },
-                            afterBody: (items) => {
-                                const row = rows[items[0].dataIndex];
-                                if (!row.resetsAt) return [];
-                                return [`Resets: ${fmtDate(row.resetsAt)} (${fmtRelative(row.resetsAt)})`];
-                            }
-                        }
-                    }
-                }
+                plugins: { legend: { labels: { color: "#f3f6fb", boxWidth: 12, font: { size: 11 } } } }
             }
         });
     }
 
     function renderChangesChart(changeCounts) {
-        const buckets = [...new Set(changeCounts.map((row) => row.bucket))];
-        const providers = [...new Set(changeCounts.map((row) => row.provider))];
-        const datasets = providers.map((provider, index) => ({
-            label: provider.toUpperCase(),
-            data: buckets.map((bucket) => {
-                const match = changeCounts.find((row) => row.bucket === bucket && row.provider === provider);
-                return match ? match.change_count : 0;
-            }),
-            backgroundColor: chartColors[index % chartColors.length] + "bb"
+        const buckets = [...new Set(changeCounts.map(r => r.bucket))];
+        const providers = [...new Set(changeCounts.map(r => r.provider))];
+        const datasets = providers.map((p, i) => ({
+            label: p.toUpperCase(),
+            data: buckets.map(b => { const m = changeCounts.find(r => r.bucket === b && r.provider === p); return m ? m.change_count : 0; }),
+            backgroundColor: chartColors[i % chartColors.length] + "bb"
         }));
 
         if (changesChart) changesChart.destroy();
         changesChart = new Chart(document.getElementById("changes-chart"), {
-            type: "bar",
-            data: {
-                labels: buckets,
-                datasets
-            },
+            type: "bar", data: { labels: buckets, datasets },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
+                responsive: true, maintainAspectRatio: false,
                 scales: {
-                    x: {
-                        ticks: { color: "#8ea6c4" },
-                        grid: { color: "rgba(255,255,255,0.06)" }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        ticks: { color: "#8ea6c4" },
-                        grid: { color: "rgba(255,255,255,0.06)" }
-                    }
+                    x: { ticks: { color: "#8ea6c4" }, grid: { color: "rgba(255,255,255,0.06)" } },
+                    y: { beginAtZero: true, ticks: { color: "#8ea6c4" }, grid: { color: "rgba(255,255,255,0.06)" } }
                 },
-                plugins: {
-                    legend: {
-                        labels: { color: "#f3f6fb" }
-                    }
-                }
+                plugins: { legend: { labels: { color: "#f3f6fb", boxWidth: 12, font: { size: 11 } } } }
             }
         });
     }
@@ -705,61 +548,34 @@
     function renderHistory(snapshots) {
         const body = document.getElementById("history-body");
         if (!snapshots.length) {
-            body.innerHTML = `<tr><td colspan="5" class="empty">No snapshots for the selected range.</td></tr>`;
+            body.innerHTML = '<tr><td colspan="5" class="empty">No snapshots for the selected range.</td></tr>';
             return;
         }
-        body.innerHTML = snapshots.map((snapshot) => `
+        body.innerHTML = snapshots.map(s => `
             <tr>
-                <td>
-                    <span class="table-time">
-                        <strong>${fmtDate(snapshot.recorded_at)}</strong>
-                        <span>${fmtRelative(snapshot.recorded_at)}</span>
-                    </span>
-                </td>
-                <td><span class="provider-chip">${snapshot.provider.toUpperCase()}</span></td>
-                <td><span class="reason-chip">${snapshot.reason}</span></td>
-                <td>${snapshot.plan_name || "—"}</td>
-                <td>${snapshot.summary}</td>
+                <td><span class="table-time"><strong>${fmtDate(s.recorded_at)}</strong><span>${fmtRelative(s.recorded_at)}</span></span></td>
+                <td><span class="provider-chip">${s.provider.toUpperCase()}</span></td>
+                <td><span class="reason-chip">${s.reason}</span></td>
+                <td>${s.plan_name || "\u2014"}</td>
+                <td>${s.summary}</td>
             </tr>
         `).join("");
     }
 
     async function loadHistory(pushState = false) {
         const query = buildQuery();
-        if (pushState) {
-            const target = query ? `/?${query}` : "/";
-            history.replaceState({}, "", target);
-        }
-        const response = await fetch(`/api/history?${query}`);
-        const data = await response.json();
-        renderCards(data.latest, data.states);
+        if (pushState) history.replaceState({}, "", query ? `/?${query}` : "/");
+        const res = await fetch(`/api/history?${query}`);
+        const data = await res.json();
+        renderUsageGrid(data.latest);
         renderUtilizationChart(data.series);
         renderChangesChart(data.change_counts);
-        renderBalanceChart(data.latest);
         renderHistory(data.snapshots);
     }
 
-    filtersForm.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        await loadHistory(true);
-    });
-
-    periodField.addEventListener("change", () => {
-        if (periodField.value !== "custom") {
-            startField.value = "";
-            endField.value = "";
-        }
-    });
-
+    filtersForm.addEventListener("submit", (e) => { e.preventDefault(); loadHistory(true); });
+    periodField.addEventListener("change", () => { if (periodField.value !== "custom") { startField.value = ""; endField.value = ""; } });
     loadHistory(false);
-
-    document.querySelectorAll("[data-datetime]").forEach((element) => {
-        const value = element.getAttribute("data-datetime");
-        const main = element.querySelector(".timestamp-main");
-        const sub = element.querySelector(".timestamp-sub");
-        if (main) main.textContent = fmtDate(value);
-        if (sub) sub.textContent = fmtRelative(value);
-    });
     </script>
 </body>
 </html>

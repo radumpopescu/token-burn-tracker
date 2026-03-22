@@ -250,6 +250,18 @@ async def manual_poll(
     return RedirectResponse(url=f"/settings?notice={status}", status_code=303)
 
 
+@app.post("/api/test/{provider}", dependencies=[Depends(require_admin)])
+async def test_provider(
+    provider: str,
+    monitor: UsageMonitorService = Depends(get_monitor),
+) -> JSONResponse:
+    if provider not in PROVIDER_SPECS:
+        return JSONResponse({"ok": False, "error": "Unknown provider"}, status_code=400)
+    results = await monitor.run_once(provider=provider)
+    result = results[0] if results else {"ok": False, "error": "No result"}
+    return JSONResponse(result)
+
+
 @app.get("/healthz")
 async def healthcheck(db: Database = Depends(get_db)) -> JSONResponse:
     return JSONResponse(
