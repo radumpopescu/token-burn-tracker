@@ -3,6 +3,13 @@ from __future__ import annotations
 import unittest
 
 from token_burn.parsers import parse_claude_usage_json, parse_codex_usage_json
+from token_burn.request_imports import (
+    decode_secret_payload,
+    encode_secret_payload,
+    format_cookie_header,
+    parse_cookie_header,
+    parse_curl_import,
+)
 
 
 class ParserTests(unittest.TestCase):
@@ -100,6 +107,38 @@ class ParserTests(unittest.TestCase):
         self.assertIn("primary_window", metric_keys)
         self.assertIn("secondary_window", metric_keys)
         self.assertIn("gpt_5_3_codex_spark_secondary_window", metric_keys)
+
+    def test_parse_curl_import_for_codex(self) -> None:
+        command = """
+        curl 'https://chatgpt.com/backend-api/wham/usage' \
+          -H 'authorization: Bearer token-123' \
+          -H 'oai-client-version: prod-abc' \
+          -H 'oai-session-id: session-123' \
+          -H 'x-openai-target-path: /backend-api/wham/usage' \
+          -b 'a=1; b=2'
+        """
+
+        imported = parse_curl_import(command)
+
+        self.assertEqual(imported.url, "https://chatgpt.com/backend-api/wham/usage")
+        self.assertEqual(imported.cookie_header, "a=1; b=2")
+        self.assertEqual(imported.authorization, "Bearer token-123")
+        self.assertEqual(imported.headers["oai-client-version"], "prod-abc")
+        self.assertEqual(imported.headers["oai-session-id"], "session-123")
+
+    def test_secret_payload_and_cookie_round_trip(self) -> None:
+        secret = encode_secret_payload(
+            {
+                "cookie_header": "a=1; b=2",
+                "authorization": "token-123",
+            }
+        )
+        payload = decode_secret_payload(secret)
+
+        self.assertEqual(payload["authorization"], "Bearer token-123")
+        cookies = parse_cookie_header(payload["cookie_header"])
+        self.assertEqual(cookies, {"a": "1", "b": "2"})
+        self.assertEqual(format_cookie_header(cookies), "a=1; b=2")
 
 
 if __name__ == "__main__":

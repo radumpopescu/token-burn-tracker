@@ -17,6 +17,7 @@ from fastapi.templating import Jinja2Templates
 from .crypto import SecretBox
 from .db import DB_SENTINEL, Database
 from .providers import PROVIDER_SPECS, provider_choices
+from .request_imports import decode_secret_payload, encode_secret_payload, parse_curl_import
 from .security import admin_auth_enabled, require_admin
 from .service import UsageMonitorService
 
@@ -127,6 +128,15 @@ async def api_history(
 @app.get("/settings", response_class=HTMLResponse, dependencies=[Depends(require_admin)])
 async def settings_page(request: Request, db: Database = Depends(get_db)):
     configs = {config.provider: config for config in db.list_provider_configs()}
+    secret_details: dict[str, dict[str, bool]] = {}
+    for provider, config in configs.items():
+        raw_secret = request.app.state.secret_box.open(config.secret_blob) if config.secret_blob else None
+        secret_values = decode_secret_payload(raw_secret)
+        secret_details[provider] = {
+            "has_cookie": bool(secret_values.get("cookie_header")),
+            "has_authorization": bool(secret_values.get("authorization")),
+            "has_imported_headers": bool((config.headers_json or "").strip() not in {"", "{}"}),
+        }
     states = db.get_provider_states()
     settings = db.get_app_settings()
     return templates.TemplateResponse(
@@ -140,6 +150,7 @@ async def settings_page(request: Request, db: Database = Depends(get_db)):
             "notice": request.query_params.get("notice"),
             "admin_auth_enabled": admin_auth_enabled(),
             "encryption_enabled": request.app.state.secret_box.enabled,
+            "secret_details": secret_details,
         },
     )
 
@@ -150,9 +161,10 @@ async def update_provider_settings(
     request: Request,
     enabled: Annotated[str | None, Form()] = None,
     usage_url: Annotated[str, Form()] = "",
-    headers_json: Annotated[str, Form()] = "{}",
+    request_import: Annotated[str, Form()] = "",
     notes: Annotated[str, Form()] = "",
     secret_input: Annotated[str, Form()] = "",
+    authorization_input: Annotated[str, Form()] = "",
     clear_secret: Annotated[str | None, Form()] = None,
     db: Database = Depends(get_db),
     secret_box: SecretBox = Depends(get_secret_box),
@@ -160,26 +172,56 @@ async def update_provider_settings(
     if provider not in PROVIDER_SPECS:
         return RedirectResponse(url="/settings?notice=unknown-provider", status_code=303)
 
-    try:
-        header_payload = headers_json.strip() or "{}"
-        parsed_headers = json.loads(header_payload)
-        if not isinstance(parsed_headers, dict):
-            raise ValueError
-    except ValueError:
-        return RedirectResponse(url="/settings?notice=invalid-headers-json", status_code=303)
+    current_config = db.get_provider_config(provider)
+    existing_secret_values = {}
+    if current_config.secret_blob:
+        existing_secret_values = decode_secret_payload(secret_box.open(current_config.secret_blob))
+
+    final_usage_url = usage_url.strip() or current_config.usage_url
+    parsed_headers: dict[str, str] = {}
+    if provider == "codex":
+        try:
+            current_headers = json.loads(current_config.headers_json or "{}")
+            if isinstance(current_headers, dict):
+                parsed_headers = {str(key): str(value) for key, value in current_headers.items()}
+        except ValueError:
+            parsed_headers = {}
+
+    secret_values = dict(existing_secret_values)
+    if request_import.strip():
+        try:
+            imported_request = parse_curl_import(request_import)
+        except ValueError:
+            return RedirectResponse(url="/settings?notice=invalid-request-import", status_code=303)
+        final_usage_url = imported_request.url or final_usage_url
+        if imported_request.cookie_header:
+            secret_values["cookie_header"] = imported_request.cookie_header
+        if imported_request.authorization:
+            secret_values["authorization"] = imported_request.authorization
+        if provider == "codex":
+            parsed_headers = imported_request.headers
 
     sealed_secret: str | object = DB_SENTINEL
     if clear_secret:
         sealed_secret = None
-    elif secret_input.strip():
-        sealed_secret = secret_box.seal(secret_input.strip())
+    else:
+        if secret_input.strip():
+            secret_values["cookie_header"] = secret_input.strip()
+        if provider == "codex" and authorization_input.strip():
+            secret_values["authorization"] = authorization_input.strip()
+        if provider == "claude":
+            parsed_headers = {}
+            secret_values.pop("authorization", None)
+
+        if request_import.strip() or secret_input.strip() or authorization_input.strip():
+            sealed_secret = secret_box.seal(encode_secret_payload(secret_values))
 
     db.update_provider_config(
         provider=provider,
         enabled=bool(enabled),
         collector_type="json_api",
         credential_type="cookie_header",
-        usage_url=usage_url.strip(),
+        usage_url=final_usage_url,
         headers_json=json.dumps(parsed_headers, sort_keys=True),
         notes=notes.strip(),
         secret_blob=sealed_secret,

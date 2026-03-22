@@ -42,7 +42,13 @@ class UsageMonitorService:
                     if not secret_value:
                         raise RuntimeError("No credentials have been stored for this provider.")
 
-                    snapshot = await collect_usage(config, secret_value)
+                    collection = await collect_usage(config, secret_value)
+                    snapshot = collection.snapshot
+                    if collection.updated_secret_value and collection.updated_secret_value != secret_value:
+                        self.db.update_provider_secret(
+                            config.provider,
+                            self.secret_box.seal(collection.updated_secret_value),
+                        )
                     state = self.db.get_provider_state(config.provider) or {}
                     last_hash = state.get("last_hash")
                     last_snapshot_at = state.get("last_snapshot_at")

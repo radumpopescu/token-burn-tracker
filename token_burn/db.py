@@ -220,6 +220,17 @@ class Database:
                 params,
             )
 
+    def update_provider_secret(self, provider: str, secret_blob: str) -> None:
+        with self.connect() as conn:
+            conn.execute(
+                """
+                UPDATE provider_configs
+                SET secret_blob = ?, updated_at = ?
+                WHERE provider = ?
+                """,
+                (secret_blob, _utcnow(), provider),
+            )
+
     def get_provider_states(self) -> dict[str, dict[str, Any]]:
         with self.connect() as conn:
             rows = conn.execute("SELECT * FROM provider_state ORDER BY provider").fetchall()

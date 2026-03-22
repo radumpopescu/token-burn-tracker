@@ -176,7 +176,7 @@
         <section class="topbar">
             <div>
                 <h1>Settings</h1>
-                <p>Paste the Cookie headers for the direct usage endpoints and the app will reuse them from SQLite on every poll. Nothing browser-driven runs on the server.</p>
+                <p>Paste the Cookie headers for the direct usage endpoints and the app will reuse them from SQLite on every poll. For Codex, the easiest option is pasting the full devtools curl command so the app can import the bearer token and request headers too.</p>
             </div>
             <a class="link" href="/">Back to dashboard</a>
         </section>
@@ -223,6 +223,7 @@
             {% for spec in provider_specs %}
             {% set config = configs.get(spec.provider) %}
             {% set state = states.get(spec.provider, {}) %}
+            {% set secret_detail = secret_details.get(spec.provider, {}) %}
             <section class="panel">
                 <h2>{{ spec.display_name }}</h2>
                 <p>{{ spec.description }}</p>
@@ -230,7 +231,11 @@
                     <div class="chip">Last checked: {{ state.get("last_checked_at", "never") }}</div>
                     <div class="chip">Last success: {{ state.get("last_success_at", "never") }}</div>
                     <div class="chip">Failures: {{ state.get("consecutive_failures", 0) }}</div>
-                    <div class="chip">Secret stored: {% if config and config.has_secret %}<span class="ok">yes</span>{% else %}<span class="warn">no</span>{% endif %}</div>
+                    <div class="chip">Cookie stored: {% if secret_detail.get("has_cookie") %}<span class="ok">yes</span>{% else %}<span class="warn">no</span>{% endif %}</div>
+                    {% if spec.provider == "codex" %}
+                    <div class="chip">Authorization stored: {% if secret_detail.get("has_authorization") %}<span class="ok">yes</span>{% else %}<span class="warn">no</span>{% endif %}</div>
+                    <div class="chip">Imported headers: {% if secret_detail.get("has_imported_headers") %}<span class="ok">yes</span>{% else %}<span class="warn">no</span>{% endif %}</div>
+                    {% endif %}
                 </div>
                 {% if state.get("last_error") %}
                 <div class="hint"><strong>Last error:</strong> {{ state.get("last_error") }}</div>
@@ -248,14 +253,22 @@
                             <label for="{{ spec.provider }}-url">Usage URL</label>
                             <input id="{{ spec.provider }}-url" name="usage_url" type="text" placeholder="{{ spec.usage_placeholder }}" value="{{ config.usage_url if config else spec.default_usage_url }}">
                         </div>
+                        {% if spec.provider == "codex" %}
                         <div class="field full">
-                            <label for="{{ spec.provider }}-headers">Custom headers JSON</label>
-                            <textarea id="{{ spec.provider }}-headers" name="headers_json">{{ config.headers_json if config else "{}" }}</textarea>
+                            <label for="{{ spec.provider }}-request-import">Paste full curl command from devtools</label>
+                            <textarea id="{{ spec.provider }}-request-import" name="request_import" placeholder="Paste the full curl command copied from the Codex usage request."></textarea>
                         </div>
+                        {% endif %}
                         <div class="field full">
                             <label for="{{ spec.provider }}-secret">Cookie header</label>
                             <textarea id="{{ spec.provider }}-secret" name="secret_input" placeholder="{{ spec.secret_hint }}"></textarea>
                         </div>
+                        {% if spec.provider == "codex" %}
+                        <div class="field full">
+                            <label for="{{ spec.provider }}-authorization">Authorization header</label>
+                            <textarea id="{{ spec.provider }}-authorization" name="authorization_input" placeholder="Paste the Bearer token if you do not want to import the full curl command."></textarea>
+                        </div>
+                        {% endif %}
                         <div class="field full">
                             <label for="{{ spec.provider }}-notes">Notes</label>
                             <textarea id="{{ spec.provider }}-notes" name="notes">{{ config.notes if config else "" }}</textarea>
@@ -263,8 +276,12 @@
                     </div>
                     <div class="hint">
                         <strong>Recommended for {{ spec.display_name }}:</strong>
-                        {{ spec.secret_hint }}
-                        Blank secret input keeps the existing stored secret. Use “Clear stored secret” only if you want to force a fresh paste.
+                        {% if spec.provider == "codex" %}
+                        Paste the full curl command first. That captures the Cookie header, the bearer token, and the OpenAI-specific request headers in one go. Blank inputs keep the existing stored values.
+                        {% else %}
+                        {{ spec.secret_hint }} Blank secret input keeps the existing stored cookie.
+                        {% endif %}
+                        Use “Clear stored secret” only if you want to force a fresh paste.
                     </div>
                     <div class="actions">
                         <button type="submit">Save {{ spec.display_name }} settings</button>

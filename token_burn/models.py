@@ -83,3 +83,9 @@ class UsageSnapshot:
 
     def metrics_json(self) -> list[dict[str, Any]]:
         return [asdict(metric) for metric in self.metrics]
+
+
+@dataclass
+class CollectionResult:
+    snapshot: UsageSnapshot
+    updated_secret_value: str | None = None

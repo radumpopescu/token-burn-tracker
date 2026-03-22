@@ -10,7 +10,7 @@ PROVIDER_SPECS = {
         "default_credential_type": "cookie_header",
         "default_usage_url": "",
         "usage_placeholder": "https://claude.ai/api/organizations/<org-id>/usage",
-        "description": "Recommended: paste the exact usage JSON endpoint from Claude devtools.",
+        "description": "Paste the exact Claude usage JSON endpoint and the Cookie header from devtools.",
         "secret_hint": "Paste the full Cookie request header from the Claude usage request.",
     },
     "codex": {
@@ -20,7 +20,7 @@ PROVIDER_SPECS = {
         "default_credential_type": "cookie_header",
         "default_usage_url": "https://chatgpt.com/backend-api/wham/usage",
         "usage_placeholder": "https://chatgpt.com/backend-api/wham/usage",
-        "description": "Recommended: use the direct usage JSON endpoint from chatgpt.com devtools.",
+        "description": "Best path: paste the full curl command from the Codex usage request in devtools so the app can import the bearer token and request headers.",
         "secret_hint": "Paste the full Cookie request header from the ChatGPT usage request.",
     },
 }
