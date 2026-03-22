@@ -79,7 +79,54 @@
         }
 
         /* Usage groups */
-        .usage-group { margin-bottom: 16px; }
+        .provider-columns {
+            display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 20px;
+        }
+        .provider-panel {
+            --provider-accent: var(--accent);
+            --provider-accent-soft: rgba(255,122,24,0.18);
+            background: rgba(15,30,49,0.86); border: 1px solid var(--line);
+            border-radius: 18px; padding: 16px;
+        }
+        .provider-panel.claude {
+            --provider-accent: #ff7a18;
+            --provider-accent-soft: rgba(255,122,24,0.18);
+            border-color: rgba(255,122,24,0.24);
+            box-shadow: inset 0 1px 0 rgba(255,122,24,0.04);
+        }
+        .provider-panel.codex {
+            --provider-accent: #31c4ff;
+            --provider-accent-soft: rgba(49,196,255,0.18);
+            border-color: rgba(49,196,255,0.24);
+            box-shadow: inset 0 1px 0 rgba(49,196,255,0.04);
+        }
+        .provider-panel-header {
+            display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px;
+        }
+        .provider-panel-kicker {
+            font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+            color: var(--provider-accent); margin-bottom: 4px; font-weight: 700;
+        }
+        .provider-panel-title {
+            font-size: 1.05rem; font-weight: 700; letter-spacing: -0.02em; margin: 0;
+        }
+        .provider-panel-subtitle {
+            margin: 4px 0 0; color: var(--muted); font-size: 0.8rem;
+        }
+        .provider-panel-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .provider-panel-btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-height: 28px; padding: 0 10px; border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04);
+            color: var(--text); font-size: 0.72rem; cursor: pointer;
+        }
+        .provider-panel-btn.hidden { border-color: rgba(255,255,255,0.08); color: var(--muted); }
+        .provider-panel-groups { display: grid; gap: 12px; }
+        .provider-panel-empty {
+            padding: 18px 16px; border-radius: 14px; border: 1px dashed rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.02); color: var(--muted); font-size: 0.84rem;
+        }
+        .usage-group { margin-bottom: 0; }
         .usage-group-title {
             font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em;
             color: var(--muted); margin: 0 0 8px; font-weight: 600;
@@ -88,19 +135,25 @@
             font-size: 0.72rem; color: var(--muted); margin: -4px 0 8px; font-weight: 400;
         }
         .usage-grid {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px;
+            display: grid; grid-template-columns: 1fr; gap: 10px;
         }
         .usage-item {
             background: rgba(15,30,49,0.86); border: 1px solid var(--line);
-            border-radius: 12px; padding: 12px 14px;
+            border-radius: 14px; padding: 12px 14px;
         }
+        .provider-panel.claude .usage-item { border-color: rgba(255,122,24,0.16); }
+        .provider-panel.codex .usage-item { border-color: rgba(49,196,255,0.16); }
         .usage-item-header {
-            display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;
+            display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 3px;
         }
         .usage-item-label { font-size: 0.82rem; color: var(--text); font-weight: 500; }
-        .usage-item-provider {
-            font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.04em;
-            color: var(--muted); background: rgba(255,255,255,0.05); padding: 2px 7px; border-radius: 5px;
+        .usage-item-actions {
+            display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0;
+        }
+        .usage-item-hide {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-height: 24px; padding: 0 8px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.03); color: var(--muted); font-size: 0.68rem; cursor: pointer;
         }
         .usage-item-pct { font-size: 0.78rem; color: var(--muted); font-weight: 600; margin-bottom: 5px; }
         .usage-bar-track { height: 7px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; }
@@ -111,6 +164,44 @@
         .usage-item-footer {
             display: flex; justify-content: space-between; margin-top: 5px;
             font-size: 0.7rem; color: var(--muted);
+        }
+        .usage-item-pace {
+            margin-top: 10px; padding: 10px 11px; border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03);
+        }
+        .pace-stats {
+            display: flex; justify-content: space-between; gap: 12px; margin-bottom: 6px;
+            font-size: 0.72rem; color: var(--muted);
+        }
+        .pace-line {
+            position: relative; height: 8px; border-radius: 999px; overflow: hidden;
+            background: rgba(255,255,255,0.08); margin-bottom: 8px;
+        }
+        .pace-line-elapsed,
+        .pace-line-used {
+            position: absolute; top: 0; left: 0; bottom: 0; border-radius: 999px;
+        }
+        .pace-line-elapsed { background: rgba(255,255,255,0.16); }
+        .pace-line-used { background: var(--provider-accent); opacity: 0.92; }
+        .pace-caption {
+            display: flex; justify-content: space-between; gap: 12px; align-items: baseline;
+            font-size: 0.72rem;
+        }
+        .pace-caption strong { color: var(--text); font-size: 0.76rem; }
+        .pace-caption span { color: var(--muted); }
+        .pace-trend {
+            display: inline-flex; align-items: center; gap: 6px; margin-bottom: 6px;
+            padding: 4px 8px; border-radius: 999px; font-size: 0.68rem; font-weight: 700;
+            letter-spacing: 0.01em;
+        }
+        .pace-trend.ahead {
+            color: #ffd7bf; background: rgba(255,122,24,0.14); border: 1px solid rgba(255,122,24,0.2);
+        }
+        .pace-trend.on-track {
+            color: #cfeee5; background: rgba(56,211,159,0.14); border: 1px solid rgba(56,211,159,0.2);
+        }
+        .pace-trend.behind {
+            color: #d7efff; background: rgba(49,196,255,0.14); border: 1px solid rgba(49,196,255,0.2);
         }
         .no-data-msg { color: var(--muted); padding: 16px; text-align: center; font-size: 0.9rem; }
 
@@ -227,6 +318,7 @@
             .page { padding: 14px 12px 32px; }
             .topbar { flex-direction: column; align-items: flex-start; }
             .topbar-left { flex-wrap: wrap; }
+            .provider-columns { grid-template-columns: 1fr; }
             .usage-grid { grid-template-columns: 1fr; }
             .series-toggles { grid-template-columns: 1fr; }
             .status-pill { width: 100%; flex-wrap: wrap; }
@@ -295,7 +387,7 @@
         codex: ["#31c4ff", "#5ed2ff", "#8edfff", "#b7ecff"],
         default: ["#7ce38b", "#b8f2e6", "#c38cff", "#ffd166"],
     };
-    const dashboardStorageKey = "token-burn.dashboard.preferences.v3";
+    const dashboardStorageKey = "token-burn.dashboard.preferences.v4";
     const fallbackRefreshSeconds = 30;
     const refreshBufferMs = 3000;
     const chartStepMs = 60 * 1000;
@@ -335,6 +427,7 @@
     let allDatasets = { session: [], weekly: [] };
     let selectedChartPeriods = { session: "5h", weekly: "7d" };
     let hiddenSeriesKeys = new Set();
+    let hiddenUsageKeys = new Set();
     let pollIntervalSeconds = Math.max(60, Number("{{ poll_interval_seconds }}") || 60);
     let activeLoadToken = 0;
     let refreshTimeoutId = null;
@@ -348,6 +441,7 @@
     let latestRefreshError = "";
     let isRefreshing = false;
     let metricLabels = {};
+    let latestUsage = {};
 
     function buildQuery() {
         const p = new URLSearchParams();
@@ -371,6 +465,7 @@
             window.localStorage.setItem(dashboardStorageKey, JSON.stringify({
                 chartPeriods: selectedChartPeriods,
                 hiddenSeriesKeys: Array.from(hiddenSeriesKeys),
+                hiddenUsageKeys: Array.from(hiddenUsageKeys),
             }));
         } catch {}
     }
@@ -384,6 +479,9 @@
         }
         if (Array.isArray(stored.hiddenSeriesKeys)) {
             hiddenSeriesKeys = new Set(stored.hiddenSeriesKeys.filter(value => typeof value === "string"));
+        }
+        if (Array.isArray(stored.hiddenUsageKeys)) {
+            hiddenUsageKeys = new Set(stored.hiddenUsageKeys.filter(value => typeof value === "string"));
         }
     }
     function normalizeChartPeriod(groupKey, period) {
@@ -634,51 +732,227 @@
         dense.push({ x: endTs, y: carry.y });
         return dedupePoints(dense);
     }
+    function providerDisplayName(provider) {
+        return provider === "claude" ? "Claude" : provider === "codex" ? "Codex" : String(provider || "").toUpperCase();
+    }
+    function metricWindowSeconds(metric) {
+        const explicitWindow = Number(metric.extra && metric.extra.limit_window_seconds);
+        if (Number.isFinite(explicitWindow) && explicitWindow > 0) return explicitWindow;
+        const key = String(metric.metric_key || "").toLowerCase();
+        if (key.includes("five_hour") || key.includes("primary")) return 5 * 60 * 60;
+        if (key.includes("seven_day") || key.includes("secondary")) return 7 * 24 * 60 * 60;
+        return null;
+    }
+    function buildPaceInfo(metric) {
+        if (metric.pct === null || metric.pct === undefined || !metric.resets_at) return null;
+        const totalSeconds = metricWindowSeconds(metric);
+        const resetDate = safeDate(metric.resets_at);
+        if (!totalSeconds || !resetDate || Number.isNaN(resetDate.getTime())) return null;
+
+        const remainingSeconds = Math.max(0, Math.round((resetDate.getTime() - Date.now()) / 1000));
+        const elapsedSeconds = Math.max(0, totalSeconds - remainingSeconds);
+        const elapsedPct = Math.max(0, Math.min(100, (elapsedSeconds / totalSeconds) * 100));
+        const usedPct = Math.max(0, Math.min(100, metric.pct));
+        const projectedPct = elapsedPct > 0 ? (usedPct / elapsedPct) * 100 : null;
+        const paceDelta = usedPct - elapsedPct;
+        let summary = "Window just started";
+        if (projectedPct !== null && Number.isFinite(projectedPct)) {
+            if (projectedPct >= 100) summary = `At this pace you land around ${projectedPct.toFixed(0)}% by reset`;
+            else summary = `At this pace you finish around ${projectedPct.toFixed(0)}% by reset`;
+        }
+
+        let trendClass = "on-track";
+        let trendLabel = "On pace";
+        if (paceDelta >= 8) {
+            trendClass = "ahead";
+            trendLabel = `${paceDelta.toFixed(0)} pts above time pace`;
+        } else if (paceDelta <= -8) {
+            trendClass = "behind";
+            trendLabel = `${Math.abs(paceDelta).toFixed(0)} pts below time pace`;
+        }
+
+        return {
+            elapsedPct,
+            usedPct,
+            headline: `${elapsedPct.toFixed(0)}% of the window elapsed`,
+            detail: `${fmtShortDuration(remainingSeconds)} left`,
+            summary,
+            trendClass,
+            trendLabel,
+        };
+    }
+    function hideUsageMetric(metricKey) {
+        hiddenUsageKeys.add(metricKey);
+        hiddenSeriesKeys.add(metricKey);
+        saveDashboardPreferences();
+        updateChartVisibility();
+        renderUsage(latestUsage);
+        renderAllSeriesChips();
+    }
+    function hideProviderItems(provider) {
+        let changed = false;
+        Object.values(latestUsage[provider] && latestUsage[provider].metrics ? latestUsage[provider].metrics : []).forEach((metric) => {
+            const key = `${provider}:${metric.metric_key}`;
+            if (!hiddenUsageKeys.has(key)) {
+                hiddenUsageKeys.add(key);
+                hiddenSeriesKeys.add(key);
+                changed = true;
+            }
+        });
+        if (!changed) return;
+        saveDashboardPreferences();
+        updateChartVisibility();
+        renderUsage(latestUsage);
+        renderAllSeriesChips();
+    }
+    function showProviderItems(provider) {
+        let changed = false;
+        Array.from(hiddenUsageKeys).forEach((metricKey) => {
+            if (metricKey.startsWith(`${provider}:`)) {
+                hiddenUsageKeys.delete(metricKey);
+                hiddenSeriesKeys.delete(metricKey);
+                changed = true;
+            }
+        });
+        if (!changed) return;
+        saveDashboardPreferences();
+        updateChartVisibility();
+        renderUsage(latestUsage);
+        renderAllSeriesChips();
+    }
 
     function renderUsage(latest) {
+        latestUsage = latest || {};
+        const usage = latestUsage;
         const container = document.getElementById("usage-container");
-        const items = [];
-        Object.entries(latest).forEach(([provider, snapshot]) => {
+        const providerPanels = {
+            claude: { title: "Claude", kicker: "Orange lane", subtitle: "Usage windows and burn pacing", groups: {} },
+            codex: { title: "Codex", kicker: "Blue lane", subtitle: "Usage windows and burn pacing", groups: {} },
+        };
+
+        Object.entries(usage).forEach(([provider, snapshot]) => {
             (snapshot.metrics || []).forEach((m) => {
                 let pct = m.percent_value;
                 if ((pct === null || pct === undefined) && m.used_value !== null && m.limit_value)
                     pct = (m.used_value / m.limit_value) * 100;
                 if (pct === null || pct === undefined || Number.isNaN(pct)) return;
                 const cls = classifyMetric(provider, m.metric_key, m.label, m.resets_at);
+                const providerPanel = providerPanels[provider] || (providerPanels[provider] = {
+                    title: providerDisplayName(provider),
+                    kicker: "Provider",
+                    subtitle: "Usage windows and burn pacing",
+                    groups: {},
+                });
                 const displayLabel = metricLabels[m.metric_key] || m.label;
-                items.push({ provider, label: displayLabel, pct: Math.max(0, Math.min(100, pct)),
+                const item = {
+                    key: `${provider}:${m.metric_key}`,
+                    provider,
+                    metric_key: m.metric_key,
+                    label: displayLabel,
+                    pct: Math.max(0, Math.min(100, pct)),
                     resets_at: m.resets_at, used: m.used_value, limit: m.limit_value, unit: m.unit,
-                    ...cls });
+                    extra: m.extra || {},
+                    ...cls,
+                };
+                const group = providerPanel.groups[item.group] || {
+                    title: item.title,
+                    subtitle: item.subtitle,
+                    order: item.order,
+                    items: [],
+                };
+                group.items.push(item);
+                providerPanel.groups[item.group] = group;
             });
         });
-        if (!items.length) {
+
+        const providersWithUsage = Object.keys(providerPanels).filter((provider) =>
+            Object.values(providerPanels[provider].groups).some((group) => group.items.length)
+        );
+        if (!providersWithUsage.length) {
             container.innerHTML = '<div class="no-data-msg">No usage data yet. Configure providers in Settings.</div>';
             return;
         }
-        const groups = {};
-        items.forEach(item => {
-            if (!groups[item.group]) groups[item.group] = { title: item.title, subtitle: item.subtitle, order: item.order, items: [] };
-            groups[item.group].items.push(item);
-        });
-        container.innerHTML = Object.values(groups).sort((a, b) => a.order - b.order).map(g => {
-            const grid = g.items.map(item => {
-                const reset = item.resets_at ? `Resets ${fmtRelative(item.resets_at)} (${fmtDuration(item.resets_at)})` : "";
-                const amt = (item.used !== null && item.used !== undefined && item.limit)
-                    ? `${Number.isInteger(item.used) ? item.used : item.used.toFixed(1)}/${Number.isInteger(item.limit) ? item.limit : item.limit.toFixed(1)}${item.unit && item.unit !== "percent" ? " " + item.unit : ""}`
-                    : "";
-                return `<div class="usage-item">
-                    <div class="usage-item-header"><span class="usage-item-label">${item.label}</span><span class="usage-item-provider">${item.provider}</span></div>
-                    <div class="usage-item-pct">${item.pct.toFixed(1)}% used</div>
-                    <div class="usage-bar-track"><div class="usage-bar-fill ${barClass(item.pct)}" style="width:${item.pct}%"></div></div>
-                    <div class="usage-item-footer"><span>${amt}</span><span>${reset}</span></div>
-                </div>`;
-            }).join("");
-            return `<div class="usage-group">
-                <h3 class="usage-group-title">${g.title}</h3>
-                ${g.subtitle ? `<p class="usage-group-subtitle">${g.subtitle}</p>` : ""}
-                <div class="usage-grid">${grid}</div>
-            </div>`;
-        }).join("");
+
+        const providerOrder = ["claude", "codex", ...providersWithUsage.filter((provider) => !["claude", "codex"].includes(provider))];
+        container.innerHTML = `<div class="provider-columns">${
+            providerOrder
+                .map((provider) => {
+                    const panel = providerPanels[provider];
+                    const totalCount = Object.values(panel.groups).reduce((count, group) => count + group.items.length, 0);
+                    const visibleCount = Object.values(panel.groups).reduce(
+                        (count, group) => count + group.items.filter((item) => !hiddenUsageKeys.has(item.key)).length,
+                        0,
+                    );
+                    const hiddenCount = Object.values(panel.groups).reduce(
+                        (count, group) => count + group.items.filter((item) => hiddenUsageKeys.has(item.key)).length,
+                        0,
+                    );
+                    const renderedGroups = Object.values(panel.groups)
+                        .sort((a, b) => a.order - b.order)
+                        .map((group) => {
+                            const visibleItems = group.items.filter((item) => !hiddenUsageKeys.has(item.key));
+                            if (!visibleItems.length) return "";
+                            const cards = visibleItems.map((item) => {
+                                const reset = item.resets_at ? `Resets ${fmtRelative(item.resets_at)} (${fmtDuration(item.resets_at)})` : "";
+                                const amt = (item.used !== null && item.used !== undefined && item.limit)
+                                    ? `${Number.isInteger(item.used) ? item.used : item.used.toFixed(1)}/${Number.isInteger(item.limit) ? item.limit : item.limit.toFixed(1)}${item.unit && item.unit !== "percent" ? " " + item.unit : ""}`
+                                    : "";
+                                const pace = buildPaceInfo(item);
+                                const paceBlock = pace ? `<div class="usage-item-pace">
+                                    <div class="pace-trend ${pace.trendClass}">${pace.trendLabel}</div>
+                                    <div class="pace-stats"><span>Used ${pace.usedPct.toFixed(0)}%</span><span>${pace.headline}</span></div>
+                                    <div class="pace-line">
+                                        <div class="pace-line-elapsed" style="width:${pace.elapsedPct.toFixed(1)}%"></div>
+                                        <div class="pace-line-used" style="width:${pace.usedPct.toFixed(1)}%"></div>
+                                    </div>
+                                    <div class="pace-caption"><strong>${pace.summary}</strong><span>${pace.detail}</span></div>
+                                </div>` : "";
+                                return `<div class="usage-item">
+                                    <div class="usage-item-header">
+                                        <span class="usage-item-label">${item.label}</span>
+                                        <div class="usage-item-actions">
+                                            <button type="button" class="usage-item-hide" onclick='hideUsageMetric(${JSON.stringify(item.key)})'>Hide</button>
+                                        </div>
+                                    </div>
+                                    <div class="usage-item-pct">${item.pct.toFixed(1)}% used</div>
+                                    <div class="usage-bar-track"><div class="usage-bar-fill ${barClass(item.pct)}" style="width:${item.pct}%"></div></div>
+                                    <div class="usage-item-footer"><span>${amt}</span><span>${reset}</span></div>
+                                    ${paceBlock}
+                                </div>`;
+                            }).join("");
+                            return `<div class="usage-group">
+                                <h3 class="usage-group-title">${group.title}</h3>
+                                ${group.subtitle ? `<p class="usage-group-subtitle">${group.subtitle}</p>` : ""}
+                                <div class="usage-grid">${cards}</div>
+                            </div>`;
+                        })
+                        .filter(Boolean)
+                        .join("");
+                    let panelBody = renderedGroups;
+                    if (!panelBody) {
+                        panelBody = totalCount
+                            ? '<div class="provider-panel-empty">Everything in this provider is hidden right now.</div>'
+                            : '<div class="provider-panel-empty">No usage data yet for this provider. Add its request import in Settings to start tracking it.</div>';
+                    }
+                    return `<section class="provider-panel ${provider}">
+                        <div class="provider-panel-header">
+                            <div>
+                                <div class="provider-panel-kicker">${panel.kicker}</div>
+                                <h2 class="provider-panel-title">${panel.title}</h2>
+                                <p class="provider-panel-subtitle">${panel.subtitle}</p>
+                            </div>
+                            <div class="provider-panel-actions">
+                                ${visibleCount ? `<button type="button" class="provider-panel-btn" onclick="hideProviderItems('${provider}')">Hide all</button>` : ""}
+                                ${hiddenCount ? `<button type="button" class="provider-panel-btn" onclick="showProviderItems('${provider}')">Show hidden (${hiddenCount})</button>` : ""}
+                            </div>
+                        </div>
+                        <div class="provider-panel-groups">
+                            ${panelBody}
+                        </div>
+                    </section>`;
+                })
+                .join("")
+        }</div>`;
     }
 
     function datasetsForGroup(groupKey) {
