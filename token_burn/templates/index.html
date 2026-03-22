@@ -140,11 +140,26 @@
             font-size: 0.92rem;
             line-height: 1.5;
         }
+        .timestamp-block {
+            display: inline-flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .timestamp-main {
+            color: var(--text);
+        }
+        .timestamp-sub {
+            color: var(--muted);
+            font-size: 0.82rem;
+        }
         .state-ok { color: var(--ok); }
         .state-error { color: var(--error); }
         .charts {
             grid-template-columns: 1.5fr 1fr;
             margin-bottom: 24px;
+        }
+        .chart-card.full-span {
+            grid-column: 1 / -1;
         }
         .chart-card {
             background: rgba(15, 30, 49, 0.86);
@@ -210,6 +225,19 @@
         .empty {
             color: var(--muted);
             padding: 36px 0;
+        }
+        .table-time {
+            display: inline-flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .table-time strong {
+            font-weight: 600;
+            color: var(--text);
+        }
+        .table-time span {
+            font-size: 0.8rem;
+            color: var(--muted);
         }
         @media (max-width: 1100px) {
             .filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -283,7 +311,14 @@
                 <div class="metric-subtext">
                     Last checked:
                     <span class="{% if state.get('last_error') %}state-error{% else %}state-ok{% endif %}">
-                        {{ state.get("last_checked_at", "never") }}
+                        {% if state.get("last_checked_at") %}
+                        <span class="timestamp-block" data-datetime="{{ state.get('last_checked_at') }}">
+                            <span class="timestamp-main">{{ state.get("last_checked_at") }}</span>
+                            <span class="timestamp-sub"></span>
+                        </span>
+                        {% else %}
+                        never
+                        {% endif %}
                     </span>
                 </div>
             </article>
@@ -310,6 +345,13 @@
                 <p class="chart-meta">How many snapshots were written per day after deduplication.</p>
                 <div class="chart-wrap">
                     <canvas id="changes-chart"></canvas>
+                </div>
+            </article>
+            <article class="chart-card full-span">
+                <h2>Current Window Balance</h2>
+                <p class="chart-meta">For each tracked limit window, compare what you have already used versus what is left right now.</p>
+                <div class="chart-wrap">
+                    <canvas id="balance-chart"></canvas>
                 </div>
             </article>
         </section>
@@ -350,6 +392,7 @@
 
     let utilizationChart;
     let changesChart;
+    let balanceChart;
 
     const filtersForm = document.getElementById("filters-form");
     const providerField = document.getElementById("provider");
@@ -366,8 +409,57 @@
         return params.toString();
     }
 
+    function safeDate(value) {
+        return value ? new Date(value) : null;
+    }
+
     function fmtDate(value) {
-        return new Date(value).toLocaleString();
+        const date = safeDate(value);
+        if (!date || Number.isNaN(date.getTime())) return "—";
+        return new Intl.DateTimeFormat(undefined, {
+            dateStyle: "medium",
+            timeStyle: "short"
+        }).format(date);
+    }
+
+    function fmtDateCompact(value) {
+        const date = safeDate(value);
+        if (!date || Number.isNaN(date.getTime())) return "—";
+        return new Intl.DateTimeFormat(undefined, {
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit"
+        }).format(date);
+    }
+
+    function fmtRelative(value) {
+        const date = safeDate(value);
+        if (!date || Number.isNaN(date.getTime())) return "";
+        const seconds = Math.round((date.getTime() - Date.now()) / 1000);
+        const absSeconds = Math.abs(seconds);
+        if (absSeconds < 60) return seconds >= 0 ? "in under a minute" : "just now";
+        const ranges = [
+            ["day", 86400],
+            ["hour", 3600],
+            ["minute", 60]
+        ];
+        const formatter = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+        for (const [unit, size] of ranges) {
+            if (absSeconds >= size || unit === "minute") {
+                return formatter.format(Math.round(seconds / size), unit);
+            }
+        }
+        return "";
+    }
+
+    function timestampBlock(value) {
+        return `
+            <span class="timestamp-block">
+                <span class="timestamp-main">${fmtDate(value)}</span>
+                <span class="timestamp-sub">${fmtRelative(value)}</span>
+            </span>
+        `;
     }
 
     function metricPointValue(point) {
@@ -399,7 +491,7 @@
                     <div class="metric-label">${provider.toUpperCase()}</div>
                     <div class="metric-value">${snapshot.plan_name || provider}</div>
                     <div class="metric-subtext">${snapshot.summary || "No summary available."}</div>
-                    <div class="metric-subtext">Last checked: <span class="${stateClass}">${state.last_checked_at || "never"}</span></div>
+                    <div class="metric-subtext">Last checked: <span class="${stateClass}">${state.last_checked_at ? timestampBlock(state.last_checked_at) : "never"}</span></div>
                 </article>
             `;
         }).join("");
@@ -432,12 +524,19 @@
                 scales: {
                     x: {
                         type: "time",
-                        time: { tooltipFormat: "yyyy-MM-dd HH:mm" },
+                        time: {
+                            tooltipFormat: "PPp",
+                            displayFormats: {
+                                hour: "MMM d, HH:mm",
+                                day: "MMM d"
+                            }
+                        },
                         ticks: { color: "#8ea6c4" },
                         grid: { color: "rgba(255,255,255,0.06)" }
                     },
                     y: {
                         beginAtZero: true,
+                        max: 100,
                         ticks: { color: "#8ea6c4" },
                         grid: { color: "rgba(255,255,255,0.06)" }
                     }
@@ -445,6 +544,116 @@
                 plugins: {
                     legend: {
                         labels: { color: "#f3f6fb", boxWidth: 14 }
+                    }
+                }
+            }
+        });
+    }
+
+    function latestBalanceRows(latest) {
+        const rows = [];
+        Object.entries(latest).forEach(([provider, snapshot]) => {
+            (snapshot.metrics || []).forEach((metric) => {
+                let usedPercent = metric.percent_value;
+                if ((usedPercent === null || usedPercent === undefined) && metric.used_value !== null && metric.limit_value) {
+                    usedPercent = (metric.used_value / metric.limit_value) * 100;
+                }
+                if (usedPercent === null || usedPercent === undefined || Number.isNaN(usedPercent)) {
+                    return;
+                }
+                const clampedUsed = Math.max(0, Math.min(100, usedPercent));
+                rows.push({
+                    provider,
+                    label: `${provider.toUpperCase()} · ${metric.label}`,
+                    usedPercent: clampedUsed,
+                    remainingPercent: Math.max(0, 100 - clampedUsed),
+                    resetsAt: metric.resets_at,
+                    rawUsed: metric.used_value,
+                    rawLimit: metric.limit_value,
+                    unit: metric.unit
+                });
+            });
+        });
+        return rows.sort((a, b) => b.usedPercent - a.usedPercent);
+    }
+
+    function fmtMetricAmounts(row) {
+        if (row.rawUsed !== null && row.rawUsed !== undefined && row.rawLimit !== null && row.rawLimit !== undefined) {
+            const used = Number.isInteger(row.rawUsed) ? row.rawUsed.toString() : row.rawUsed.toFixed(2).replace(/\.?0+$/, "");
+            const limit = Number.isInteger(row.rawLimit) ? row.rawLimit.toString() : row.rawLimit.toFixed(2).replace(/\.?0+$/, "");
+            const suffix = row.unit && row.unit !== "percent" ? ` ${row.unit}` : "";
+            return `${used}/${limit}${suffix}`;
+        }
+        return `${row.usedPercent.toFixed(1)}% used`;
+    }
+
+    function renderBalanceChart(latest) {
+        const rows = latestBalanceRows(latest);
+        if (balanceChart) balanceChart.destroy();
+
+        balanceChart = new Chart(document.getElementById("balance-chart"), {
+            type: "bar",
+            data: {
+                labels: rows.map((row) => row.label),
+                datasets: [
+                    {
+                        label: "Used",
+                        data: rows.map((row) => row.usedPercent),
+                        backgroundColor: "#ff7a18cc",
+                        borderColor: "#ff7a18",
+                        borderWidth: 1,
+                        borderRadius: 8,
+                    },
+                    {
+                        label: "Left",
+                        data: rows.map((row) => row.remainingPercent),
+                        backgroundColor: "#31c4ff66",
+                        borderColor: "#31c4ff",
+                        borderWidth: 1,
+                        borderRadius: 8,
+                    }
+                ]
+            },
+            options: {
+                indexAxis: "y",
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        stacked: true,
+                        min: 0,
+                        max: 100,
+                        ticks: {
+                            color: "#8ea6c4",
+                            callback: (value) => `${value}%`
+                        },
+                        grid: { color: "rgba(255,255,255,0.06)" }
+                    },
+                    y: {
+                        stacked: true,
+                        ticks: { color: "#f3f6fb" },
+                        grid: { display: false }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: { color: "#f3f6fb" }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => {
+                                const row = rows[context.dataIndex];
+                                if (context.datasetIndex === 0) {
+                                    return `Used: ${row.usedPercent.toFixed(1)}% (${fmtMetricAmounts(row)})`;
+                                }
+                                return `Left: ${row.remainingPercent.toFixed(1)}%`;
+                            },
+                            afterBody: (items) => {
+                                const row = rows[items[0].dataIndex];
+                                if (!row.resetsAt) return [];
+                                return [`Resets: ${fmtDate(row.resetsAt)} (${fmtRelative(row.resetsAt)})`];
+                            }
+                        }
                     }
                 }
             }
@@ -501,7 +710,12 @@
         }
         body.innerHTML = snapshots.map((snapshot) => `
             <tr>
-                <td>${fmtDate(snapshot.recorded_at)}</td>
+                <td>
+                    <span class="table-time">
+                        <strong>${fmtDate(snapshot.recorded_at)}</strong>
+                        <span>${fmtRelative(snapshot.recorded_at)}</span>
+                    </span>
+                </td>
                 <td><span class="provider-chip">${snapshot.provider.toUpperCase()}</span></td>
                 <td><span class="reason-chip">${snapshot.reason}</span></td>
                 <td>${snapshot.plan_name || "—"}</td>
@@ -521,6 +735,7 @@
         renderCards(data.latest, data.states);
         renderUtilizationChart(data.series);
         renderChangesChart(data.change_counts);
+        renderBalanceChart(data.latest);
         renderHistory(data.snapshots);
     }
 
@@ -537,6 +752,14 @@
     });
 
     loadHistory(false);
+
+    document.querySelectorAll("[data-datetime]").forEach((element) => {
+        const value = element.getAttribute("data-datetime");
+        const main = element.querySelector(".timestamp-main");
+        const sub = element.querySelector(".timestamp-sub");
+        if (main) main.textContent = fmtDate(value);
+        if (sub) sub.textContent = fmtRelative(value);
+    });
     </script>
 </body>
 </html>

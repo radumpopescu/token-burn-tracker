@@ -155,6 +155,20 @@
             color: var(--muted);
             background: rgba(255,255,255,0.04);
         }
+        .chip-time {
+            display: inline-flex;
+            flex-direction: column;
+            gap: 2px;
+            align-items: flex-start;
+        }
+        .chip-time strong {
+            color: var(--text);
+            font-weight: 600;
+        }
+        .chip-time span {
+            font-size: 0.76rem;
+            color: var(--muted);
+        }
         .hint {
             padding: 12px 14px;
             border-radius: 14px;
@@ -228,8 +242,28 @@
                 <h2>{{ spec.display_name }}</h2>
                 <p>{{ spec.description }}</p>
                 <div class="meta">
-                    <div class="chip">Last checked: {{ state.get("last_checked_at", "never") }}</div>
-                    <div class="chip">Last success: {{ state.get("last_success_at", "never") }}</div>
+                    <div class="chip">
+                        Last checked:
+                        {% if state.get("last_checked_at") %}
+                        <span class="chip-time" data-datetime="{{ state.get('last_checked_at') }}">
+                            <strong>{{ state.get("last_checked_at") }}</strong>
+                            <span></span>
+                        </span>
+                        {% else %}
+                        never
+                        {% endif %}
+                    </div>
+                    <div class="chip">
+                        Last success:
+                        {% if state.get("last_success_at") %}
+                        <span class="chip-time" data-datetime="{{ state.get('last_success_at') }}">
+                            <strong>{{ state.get("last_success_at") }}</strong>
+                            <span></span>
+                        </span>
+                        {% else %}
+                        never
+                        {% endif %}
+                    </div>
                     <div class="chip">Failures: {{ state.get("consecutive_failures", 0) }}</div>
                     <div class="chip">Cookie stored: {% if secret_detail.get("has_cookie") %}<span class="ok">yes</span>{% else %}<span class="warn">no</span>{% endif %}</div>
                     {% if spec.provider == "codex" %}
@@ -313,5 +347,44 @@
             </form>
         </section>
     </div>
+
+    <script>
+    function formatDateTime(value) {
+        const date = value ? new Date(value) : null;
+        if (!date || Number.isNaN(date.getTime())) return "—";
+        return new Intl.DateTimeFormat(undefined, {
+            dateStyle: "medium",
+            timeStyle: "short"
+        }).format(date);
+    }
+
+    function formatRelative(value) {
+        const date = value ? new Date(value) : null;
+        if (!date || Number.isNaN(date.getTime())) return "";
+        const seconds = Math.round((date.getTime() - Date.now()) / 1000);
+        const absSeconds = Math.abs(seconds);
+        if (absSeconds < 60) return seconds >= 0 ? "in under a minute" : "just now";
+        const ranges = [
+            ["day", 86400],
+            ["hour", 3600],
+            ["minute", 60]
+        ];
+        const formatter = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+        for (const [unit, size] of ranges) {
+            if (absSeconds >= size || unit === "minute") {
+                return formatter.format(Math.round(seconds / size), unit);
+            }
+        }
+        return "";
+    }
+
+    document.querySelectorAll("[data-datetime]").forEach((element) => {
+        const value = element.getAttribute("data-datetime");
+        const main = element.querySelector("strong");
+        const sub = element.querySelector("span");
+        if (main) main.textContent = formatDateTime(value);
+        if (sub) sub.textContent = formatRelative(value);
+    });
+    </script>
 </body>
 </html>
