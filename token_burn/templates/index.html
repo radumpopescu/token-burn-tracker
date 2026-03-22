@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Token Burn Monitor</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts@4.7.0/dist/apexcharts.min.js"></script>
     <style>
         :root {
             --bg: #07121f;
@@ -177,7 +176,48 @@
             width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
         }
 
-        .chart-wrap { position: relative; min-height: 300px; }
+        .chart-wrap { position: relative; min-height: 340px; }
+
+        /* ApexCharts dark overrides */
+        .apexcharts-tooltip {
+            background: #132844 !important;
+            border: 1px solid #213756 !important;
+            color: #f3f6fb !important;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4) !important;
+            border-radius: 8px !important;
+        }
+        .apexcharts-tooltip-title {
+            background: #0f1e31 !important;
+            border-bottom: 1px solid #213756 !important;
+            color: #8ea6c4 !important;
+            font-size: 0.78rem !important;
+        }
+        .apexcharts-tooltip-series-group {
+            padding: 4px 8px !important;
+        }
+        .apexcharts-xaxistooltip {
+            background: #132844 !important;
+            border: 1px solid #213756 !important;
+            color: #8ea6c4 !important;
+        }
+        .apexcharts-xaxistooltip-bottom::after,
+        .apexcharts-xaxistooltip-bottom::before {
+            border-bottom-color: #132844 !important;
+        }
+        .apexcharts-menu {
+            background: #132844 !important;
+            border: 1px solid #213756 !important;
+        }
+        .apexcharts-menu-item:hover {
+            background: #1a3555 !important;
+        }
+        .apexcharts-toolbar {
+            top: -6px !important;
+        }
+        .apexcharts-reset-icon, .apexcharts-zoom-icon, .apexcharts-zoomin-icon,
+        .apexcharts-zoomout-icon, .apexcharts-pan-icon, .apexcharts-menu-icon {
+            color: #8ea6c4 !important;
+        }
 
         @keyframes spin {
             to { transform: rotate(360deg); }
@@ -217,7 +257,7 @@
             </div>
             <div class="series-toggles" id="series-toggles"></div>
             <div class="chart-wrap">
-                <canvas id="utilization-chart"></canvas>
+                <div id="utilization-chart"></div>
             </div>
         </section>
     </div>
@@ -236,7 +276,7 @@
     const fallbackRefreshSeconds = 30;
     const refreshBufferMs = 3000;
     const allowedPeriods = new Set(["1h", "24h", "7d", "30d", "90d", "all"]);
-    let utilizationChart;
+    let apexChart = null;
     let allDatasets = [];
     let hiddenSeriesKeys = new Set();
     let currentPeriod = "{{ filters.period }}";
@@ -252,6 +292,7 @@
     let seriesGroupMeta = {};
     let latestRefreshError = "";
     let isRefreshing = false;
+    let metricLabels = {};
 
     function buildQuery() {
         const p = new URLSearchParams();
@@ -311,13 +352,6 @@
         const d = safeDate(v);
         if (!d || Number.isNaN(d.getTime())) return null;
         return d.getTime();
-    }
-    function extendPointsToNow(points, xMax) {
-        if (!points.length) return points;
-        const syntheticX = xMax || Date.now();
-        const lastPoint = points[points.length - 1];
-        if (syntheticX <= lastPoint.x) return points;
-        return [...points, { x: syntheticX, y: lastPoint.y, synthetic: true }];
     }
     function fmtRelative(v) {
         const d = safeDate(v);
@@ -461,8 +495,6 @@
         return { group: "other", order: 3, title: "Other limits", subtitle: "" };
     }
 
-    let metricLabels = {};
-
     function renderUsage(latest) {
         const container = document.getElementById("usage-container");
         const items = [];
@@ -532,7 +564,7 @@
                 const chips = group.datasets.map((dataset) => {
                     const isOff = hiddenSeriesKeys.has(dataset.key);
                     return `<span class="series-chip ${isOff ? "off" : ""}" data-key="${dataset.key}" onclick='toggleSeries(${JSON.stringify(dataset.key)})'>
-                        <span class="dot" style="background:${dataset.borderColor}"></span>${dataset.label}
+                        <span class="dot" style="background:${dataset.color}"></span>${dataset.label}
                     </span>`;
                 }).join("");
                 return `<div class="series-group">
@@ -570,75 +602,172 @@
     }
 
     function updateChartVisibility() {
-        if (!utilizationChart) return;
-        allDatasets.forEach((ds, i) => {
-            utilizationChart.setDatasetVisibility(i, !hiddenSeriesKeys.has(ds.key));
+        if (!apexChart) return;
+        // ApexCharts toggle: show/hide by series name
+        allDatasets.forEach((ds) => {
+            const hidden = hiddenSeriesKeys.has(ds.key);
+            if (hidden) apexChart.hideSeries(ds.label);
+            else apexChart.showSeries(ds.label);
         });
-        utilizationChart.update("none");
     }
 
     function renderChart(series) {
         const xMin = chartTimeValue(currentRangeStartAt);
         const xMax = chartTimeValue(currentRangeEndAt);
+        const nowTs = Date.now();
+
         allDatasets = series
             .map((s, i) => {
                 const datasetKey = `${s.provider}:${s.metric_key}`;
                 const group = seriesGroupMeta[datasetKey] || classifyMetric(s.provider, s.label, null);
-                const realPoints = s.points
-                    .map(p => ({ x: chartTimeValue(p.recorded_at), y: metricPointValue(p) }))
-                    .filter(p => p.x !== null && p.y !== null);
-                const points = extendPointsToNow(realPoints, xMax);
+                const color = chartColors[i % chartColors.length];
+                const displayLabel = `${s.provider.toUpperCase()} \u00b7 ${metricLabels[s.metric_key] || s.label}`;
+
+                const points = s.points
+                    .map(p => {
+                        const x = chartTimeValue(p.recorded_at);
+                        const y = metricPointValue(p);
+                        return (x !== null && y !== null) ? { x, y } : null;
+                    })
+                    .filter(Boolean);
+
+                // Extend last point to now for a step-like effect
+                if (points.length > 0) {
+                    const last = points[points.length - 1];
+                    const endTs = xMax || nowTs;
+                    if (endTs > last.x) {
+                        points.push({ x: endTs, y: last.y });
+                    }
+                }
+
                 return {
                     key: datasetKey,
-                    label: `${s.provider.toUpperCase()} \u00b7 ${metricLabels[s.metric_key] || s.label}`,
-                    data: points,
-                    borderColor: chartColors[i % chartColors.length],
-                    backgroundColor: chartColors[i % chartColors.length] + "33",
-                    borderWidth: 2,
+                    label: displayLabel,
+                    color,
                     group: group.group,
                     groupOrder: group.order,
                     groupTitle: group.title,
                     groupSubtitle: group.subtitle,
-                    tension: 0.28,
-                    fill: false,
-                    pointRadius: ctx => {
-                        const point = ctx.raw || {};
-                        if (point.synthetic) return 0;
-                        return realPoints.length === 1 ? 4 : 2.5;
-                    },
-                    pointHoverRadius: 4,
-                    spanGaps: true,
-                    hidden: hiddenSeriesKeys.has(datasetKey)
+                    data: points,
                 };
             })
             .filter(ds => ds.data.length > 0);
 
-        if (utilizationChart) utilizationChart.destroy();
-        utilizationChart = new Chart(document.getElementById("utilization-chart"), {
-            type: "line", data: { datasets: allDatasets },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                interaction: { mode: "nearest", intersect: false },
-                parsing: false,
-                scales: {
-                    x: {
-                        type: "time",
-                        min: xMin || undefined,
-                        max: xMax || undefined,
-                        time: {
-                            tooltipFormat: "PPp",
-                            displayFormats: { minute: "HH:mm", hour: "MMM d, HH:mm", day: "MMM d" }
-                        },
-                        ticks: { color: "#8ea6c4" },
-                        grid: { color: "rgba(255,255,255,0.06)" }
+        const apexSeries = allDatasets.map(ds => ({
+            name: ds.label,
+            data: ds.data,
+        }));
+
+        const apexOptions = {
+            series: apexSeries,
+            chart: {
+                type: "area",
+                height: 340,
+                background: "transparent",
+                fontFamily: "SF Pro Display, Segoe UI, system-ui, sans-serif",
+                foreColor: "#8ea6c4",
+                toolbar: {
+                    show: true,
+                    tools: {
+                        download: false,
+                        selection: false,
+                        zoom: true,
+                        zoomin: false,
+                        zoomout: false,
+                        pan: false,
+                        reset: true,
                     },
-                    y: { beginAtZero: true, max: 100, ticks: { color: "#8ea6c4", callback: v => v + "%" }, grid: { color: "rgba(255,255,255,0.06)" } }
                 },
-                plugins: {
-                    legend: { display: false }
+                zoom: { enabled: true },
+                animations: {
+                    enabled: true,
+                    easing: "easeinout",
+                    speed: 600,
+                    dynamicAnimation: { enabled: true, speed: 350 },
+                },
+                selection: { enabled: true },
+            },
+            colors: allDatasets.map(ds => ds.color),
+            stroke: {
+                curve: "stepline",
+                width: 2.5,
+            },
+            fill: {
+                type: "gradient",
+                gradient: {
+                    shadeIntensity: 1,
+                    opacityFrom: 0.25,
+                    opacityTo: 0.02,
+                    stops: [0, 100],
+                },
+            },
+            markers: {
+                size: 0,
+                hover: { size: 5, sizeOffset: 2 },
+            },
+            xaxis: {
+                type: "datetime",
+                min: xMin || undefined,
+                max: xMax || undefined,
+                labels: {
+                    style: { colors: "#8ea6c4", fontSize: "11px" },
+                    datetimeUTC: false,
+                },
+                axisBorder: { color: "#213756" },
+                axisTicks: { color: "#213756" },
+                crosshairs: {
+                    stroke: { color: "#31c4ff", width: 1, dashArray: 3 },
+                },
+            },
+            yaxis: {
+                min: 0,
+                max: 100,
+                tickAmount: 5,
+                labels: {
+                    style: { colors: "#8ea6c4", fontSize: "11px" },
+                    formatter: (val) => val.toFixed(0) + "%",
+                },
+            },
+            grid: {
+                borderColor: "rgba(255,255,255,0.06)",
+                strokeDashArray: 3,
+                xaxis: { lines: { show: false } },
+                yaxis: { lines: { show: true } },
+            },
+            tooltip: {
+                theme: "dark",
+                shared: true,
+                intersect: false,
+                x: {
+                    format: "MMM dd, yyyy HH:mm",
+                },
+                y: {
+                    formatter: (val) => val !== null && val !== undefined ? val.toFixed(1) + "%" : "—",
+                },
+                marker: { show: true },
+            },
+            legend: { show: false },
+            dataLabels: { enabled: false },
+            theme: { mode: "dark" },
+        };
+
+        if (apexChart) {
+            apexChart.destroy();
+            apexChart = null;
+        }
+
+        const el = document.getElementById("utilization-chart");
+        el.innerHTML = "";
+        apexChart = new ApexCharts(el, apexOptions);
+        apexChart.render().then(() => {
+            // Apply hidden series after render
+            allDatasets.forEach((ds) => {
+                if (hiddenSeriesKeys.has(ds.key)) {
+                    apexChart.hideSeries(ds.label);
                 }
-            }
+            });
         });
+
         renderSeriesChips();
     }
 
