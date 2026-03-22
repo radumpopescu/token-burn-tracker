@@ -249,15 +249,32 @@
         </div>
 
         <section class="chart-section">
-            <h2>Usage over time</h2>
-            <div class="period-toggles" id="period-toggles">
-                {% for value, label in [("1h","1h"),("24h","24h"),("7d","7d"),("30d","30d"),("90d","90d"),("all","All")] %}
-                <span class="period-chip {% if filters.period == value %}active{% endif %}" data-period="{{ value }}" onclick="setPeriod('{{ value }}', this)">{{ label }}</span>
-                {% endfor %}
+            <div class="series-group-header">
+                <div class="series-group-title">
+                    <strong>5h windows</strong>
+                    <span>Primary and short-session limits over the last 5 hours</span>
+                </div>
+                <button type="button" class="series-group-toggle" id="session-group-toggle" onclick="toggleGroup('session')">Hide all</button>
             </div>
-            <div class="series-toggles" id="series-toggles"></div>
+            <div class="series-group-chips" id="session-series-toggles"></div>
             <div class="chart-wrap">
-                <div id="utilization-chart"></div>
+                <div id="session-chart"></div>
+                <div class="no-data-msg" id="session-chart-empty" style="display:none;">No 5h window history yet.</div>
+            </div>
+        </section>
+
+        <section class="chart-section">
+            <div class="series-group-header">
+                <div class="series-group-title">
+                    <strong>7d windows</strong>
+                    <span>Secondary and weekly limits over the last 7 days</span>
+                </div>
+                <button type="button" class="series-group-toggle" id="weekly-group-toggle" onclick="toggleGroup('weekly')">Hide all</button>
+            </div>
+            <div class="series-group-chips" id="weekly-series-toggles"></div>
+            <div class="chart-wrap">
+                <div id="weekly-chart"></div>
+                <div class="no-data-msg" id="weekly-chart-empty" style="display:none;">No 7d window history yet.</div>
             </div>
         </section>
     </div>
@@ -272,14 +289,32 @@
 
     <script>
     const chartColors = ["#ff7a18","#31c4ff","#7ce38b","#c38cff","#ffd166","#ff6b6b","#7bdff2","#b8f2e6"];
-    const dashboardStorageKey = "token-burn.dashboard.preferences.v1";
+    const dashboardStorageKey = "token-burn.dashboard.preferences.v2";
     const fallbackRefreshSeconds = 30;
     const refreshBufferMs = 3000;
-    const allowedPeriods = new Set(["1h", "24h", "7d", "30d", "90d", "all"]);
-    let apexChart = null;
-    let allDatasets = [];
+    const chartStepMs = 60 * 1000;
+    const historyPeriod = "7d";
+    const chartConfigs = {
+        session: {
+            chartId: "session-chart",
+            emptyId: "session-chart-empty",
+            controlsId: "session-series-toggles",
+            toggleId: "session-group-toggle",
+            rangeMs: 5 * 60 * 60 * 1000,
+            emptyMessage: "No 5h window history yet.",
+        },
+        weekly: {
+            chartId: "weekly-chart",
+            emptyId: "weekly-chart-empty",
+            controlsId: "weekly-series-toggles",
+            toggleId: "weekly-group-toggle",
+            rangeMs: 7 * 24 * 60 * 60 * 1000,
+            emptyMessage: "No 7d window history yet.",
+        },
+    };
+    let apexCharts = { session: null, weekly: null };
+    let allDatasets = { session: [], weekly: [] };
     let hiddenSeriesKeys = new Set();
-    let currentPeriod = "{{ filters.period }}";
     let pollIntervalSeconds = Math.max(60, Number("{{ poll_interval_seconds }}") || 60);
     let activeLoadToken = 0;
     let refreshTimeoutId = null;
@@ -289,9 +324,7 @@
     let latestCheckedAt = null;
     let pendingBackendRefreshRetry = false;
     let pendingBackendRefreshRetries = 0;
-    let currentRangeStartAt = null;
     let currentRangeEndAt = null;
-    let seriesGroupMeta = {};
     let latestRefreshError = "";
     let isRefreshing = false;
     let metricLabels = {};
@@ -299,7 +332,7 @@
     function buildQuery() {
         const p = new URLSearchParams();
         p.set("provider", "all");
-        p.set("period", currentPeriod);
+        p.set("period", historyPeriod);
         return p.toString();
     }
 
@@ -316,32 +349,15 @@
     function saveDashboardPreferences() {
         try {
             window.localStorage.setItem(dashboardStorageKey, JSON.stringify({
-                period: currentPeriod,
                 hiddenSeriesKeys: Array.from(hiddenSeriesKeys),
             }));
         } catch {}
     }
     function applyStoredDashboardPreferences() {
-        const searchPeriod = new URLSearchParams(window.location.search).get("period");
         const stored = getStoredDashboardPreferences();
-        if (searchPeriod && allowedPeriods.has(searchPeriod)) currentPeriod = searchPeriod;
-        else if (allowedPeriods.has(stored.period)) currentPeriod = stored.period;
-
         if (Array.isArray(stored.hiddenSeriesKeys)) {
             hiddenSeriesKeys = new Set(stored.hiddenSeriesKeys.filter(value => typeof value === "string"));
         }
-    }
-    function syncPeriodChips() {
-        document.querySelectorAll(".period-chip").forEach((chip) => {
-            chip.classList.toggle("active", chip.dataset.period === currentPeriod);
-        });
-    }
-    function setPeriod(period, el) {
-        if (!allowedPeriods.has(period)) return;
-        currentPeriod = period;
-        syncPeriodChips();
-        saveDashboardPreferences();
-        loadData(true);
     }
 
     function safeDate(v) { return v ? new Date(v) : null; }
@@ -424,15 +440,6 @@
             .filter((date) => date && !Number.isNaN(date.getTime()))
             .sort((a, b) => b.getTime() - a.getTime())[0] || null;
     }
-    function buildSeriesGroupMeta(latest) {
-        const meta = {};
-        Object.entries(latest || {}).forEach(([provider, snapshot]) => {
-            (snapshot.metrics || []).forEach((metric) => {
-                meta[`${provider}:${metric.metric_key}`] = classifyMetric(provider, metric.label, metric.resets_at);
-            });
-        });
-        return meta;
-    }
     function updateRefreshStatus() {
         const pill = document.getElementById("refresh-status-pill");
         const spinner = document.getElementById("refresh-spinner");
@@ -480,7 +487,8 @@
         return null;
     }
 
-    function classifyMetric(provider, label, resets_at) {
+    function classifyMetric(provider, metricKey, label, resets_at) {
+        const key = (metricKey || "").toLowerCase();
         const l = (label || "").toLowerCase();
 
         // Use reset time to determine group: < 24h = session, otherwise weekly
@@ -494,11 +502,66 @@
         }
 
         // Fallback to label-based classification
-        if (l.includes("5 hour") || l.includes("5h") || l.includes("primary")) return { group: "session", order: 0, title: "Current session", subtitle: "Short-term rate limits (resets within 24 hours)" };
-        if (l.includes("7 day") || l.includes("weekly") || l.includes("week") || l.includes("secondary")) return { group: "weekly", order: 1, title: "Weekly limits", subtitle: "Longer rolling window" };
+        if (key.includes("five_hour") || key.includes("primary") || l.includes("5 hour") || l.includes("5h") || l.includes("primary")) return { group: "session", order: 0, title: "Current session", subtitle: "Short-term rate limits (resets within 24 hours)" };
+        if (key.includes("seven_day") || key.includes("secondary") || l.includes("7 day") || l.includes("weekly") || l.includes("week") || l.includes("secondary")) return { group: "weekly", order: 1, title: "Weekly limits", subtitle: "Longer rolling window" };
         if (l.includes("extra") || l.includes("credit") || l.includes("monthly")) return { group: "credits", order: 2, title: "Credits / extras", subtitle: "Monthly usage credits and add-ons" };
         if (l.includes("message") || l.includes("cloud") || l.includes("local")) return { group: "credits", order: 2, title: "Credits / extras", subtitle: "Message and credit counts" };
         return { group: "other", order: 3, title: "Other limits", subtitle: "" };
+    }
+
+    function minuteFloor(ts) {
+        return Math.floor(ts / chartStepMs) * chartStepMs;
+    }
+    function minuteCeil(ts) {
+        return Math.ceil(ts / chartStepMs) * chartStepMs;
+    }
+    function dedupePoints(points) {
+        const deduped = [];
+        points.forEach((point) => {
+            if (!deduped.length || deduped[deduped.length - 1].x !== point.x) {
+                deduped.push(point);
+            } else {
+                deduped[deduped.length - 1] = point;
+            }
+        });
+        return deduped;
+    }
+    function densifySeriesPoints(points, startTs, endTs) {
+        if (!points.length || startTs >= endTs) return [];
+        const sorted = points
+            .slice()
+            .sort((a, b) => a.x - b.x)
+            .filter(point => point.x <= endTs);
+        if (!sorted.length) return [];
+
+        let carry = null;
+        let pointIndex = 0;
+        let firstDenseTs = startTs;
+        while (pointIndex < sorted.length && sorted[pointIndex].x <= startTs) {
+            carry = sorted[pointIndex];
+            pointIndex += 1;
+        }
+        if (!carry) {
+            if (pointIndex >= sorted.length) return [];
+            carry = sorted[pointIndex];
+            firstDenseTs = carry.x;
+            pointIndex += 1;
+        }
+
+        const dense = [{ x: firstDenseTs, y: carry.y }];
+        for (let ts = minuteCeil(firstDenseTs); ts <= minuteFloor(endTs); ts += chartStepMs) {
+            while (pointIndex < sorted.length && sorted[pointIndex].x <= ts) {
+                carry = sorted[pointIndex];
+                pointIndex += 1;
+            }
+            dense.push({ x: ts, y: carry.y });
+        }
+        while (pointIndex < sorted.length && sorted[pointIndex].x <= endTs) {
+            carry = sorted[pointIndex];
+            pointIndex += 1;
+        }
+        dense.push({ x: endTs, y: carry.y });
+        return dedupePoints(dense);
     }
 
     function renderUsage(latest) {
@@ -510,7 +573,7 @@
                 if ((pct === null || pct === undefined) && m.used_value !== null && m.limit_value)
                     pct = (m.used_value / m.limit_value) * 100;
                 if (pct === null || pct === undefined || Number.isNaN(pct)) return;
-                const cls = classifyMetric(provider, m.label, m.resets_at);
+                const cls = classifyMetric(provider, m.metric_key, m.label, m.resets_at);
                 const displayLabel = metricLabels[m.metric_key] || m.label;
                 items.push({ provider, label: displayLabel, pct: Math.max(0, Math.min(100, pct)),
                     resets_at: m.resets_at, used: m.used_value, limit: m.limit_value, unit: m.unit,
@@ -547,44 +610,25 @@
         }).join("");
     }
 
-    function renderSeriesChips() {
-        const container = document.getElementById("series-toggles");
-        const groups = {};
-        allDatasets.forEach((dataset) => {
-            const group = groups[dataset.group] || {
-                key: dataset.group,
-                title: dataset.groupTitle,
-                subtitle: dataset.groupSubtitle,
-                order: dataset.groupOrder,
-                datasets: [],
-            };
-            group.datasets.push(dataset);
-            groups[dataset.group] = group;
-        });
-
-        container.innerHTML = Object.values(groups)
-            .sort((a, b) => a.order - b.order)
-            .map((group) => {
-                const visibleCount = group.datasets.filter(ds => !hiddenSeriesKeys.has(ds.key)).length;
-                const toggleLabel = visibleCount === 0 ? "Show all" : "Hide all";
-                const chips = group.datasets.map((dataset) => {
-                    const isOff = hiddenSeriesKeys.has(dataset.key);
-                    return `<span class="series-chip ${isOff ? "off" : ""}" data-key="${dataset.key}" onclick='toggleSeries(${JSON.stringify(dataset.key)})'>
-                        <span class="dot" style="background:${dataset.color}"></span>${dataset.label}
-                    </span>`;
-                }).join("");
-                return `<div class="series-group">
-                    <div class="series-group-header">
-                        <div class="series-group-title">
-                            <strong>${group.title}</strong>
-                            ${group.subtitle ? `<span>${group.subtitle}</span>` : ""}
-                        </div>
-                        <button type="button" class="series-group-toggle" onclick='toggleGroup(${JSON.stringify(group.key)})'>${toggleLabel}</button>
-                    </div>
-                    <div class="series-group-chips">${chips}</div>
-                </div>`;
-            })
-            .join("");
+    function datasetsForGroup(groupKey) {
+        return allDatasets[groupKey] || [];
+    }
+    function renderSeriesChips(groupKey) {
+        const config = chartConfigs[groupKey];
+        const container = document.getElementById(config.controlsId);
+        const toggleButton = document.getElementById(config.toggleId);
+        const datasets = datasetsForGroup(groupKey);
+        const visibleCount = datasets.filter(ds => !hiddenSeriesKeys.has(ds.key)).length;
+        toggleButton.textContent = datasets.length && visibleCount === 0 ? "Show all" : "Hide all";
+        container.innerHTML = datasets.map((dataset) => {
+            const isOff = hiddenSeriesKeys.has(dataset.key);
+            return `<span class="series-chip ${isOff ? "off" : ""}" data-key="${dataset.key}" onclick='toggleSeries(${JSON.stringify(dataset.key)})'>
+                <span class="dot" style="background:${dataset.color}"></span>${dataset.label}
+            </span>`;
+        }).join("");
+    }
+    function renderAllSeriesChips() {
+        Object.keys(chartConfigs).forEach(renderSeriesChips);
     }
 
     function toggleSeries(key) {
@@ -592,10 +636,10 @@
         else hiddenSeriesKeys.add(key);
         saveDashboardPreferences();
         updateChartVisibility();
-        renderSeriesChips();
+        renderAllSeriesChips();
     }
     function toggleGroup(groupKey) {
-        const datasets = allDatasets.filter(ds => ds.group === groupKey);
+        const datasets = datasetsForGroup(groupKey);
         if (!datasets.length) return;
         const shouldShowAll = datasets.every(ds => hiddenSeriesKeys.has(ds.key));
         datasets.forEach((dataset) => {
@@ -604,68 +648,55 @@
         });
         saveDashboardPreferences();
         updateChartVisibility();
-        renderSeriesChips();
+        renderAllSeriesChips();
     }
 
     function updateChartVisibility() {
-        if (!apexChart) return;
-        // ApexCharts toggle: show/hide by series name
-        allDatasets.forEach((ds) => {
-            const hidden = hiddenSeriesKeys.has(ds.key);
-            if (hidden) apexChart.hideSeries(ds.label);
-            else apexChart.showSeries(ds.label);
+        Object.entries(apexCharts).forEach(([groupKey, chart]) => {
+            if (!chart) return;
+            datasetsForGroup(groupKey).forEach((dataset) => {
+                if (hiddenSeriesKeys.has(dataset.key)) chart.hideSeries(dataset.label);
+                else chart.showSeries(dataset.label);
+            });
         });
     }
 
-    function renderChart(series) {
-        const xMin = chartTimeValue(currentRangeStartAt);
-        const xMax = chartTimeValue(currentRangeEndAt);
-        const nowTs = Date.now();
-
-        allDatasets = series
-            .map((s, i) => {
-                const datasetKey = `${s.provider}:${s.metric_key}`;
-                const group = seriesGroupMeta[datasetKey] || classifyMetric(s.provider, s.label, null);
-                const color = chartColors[i % chartColors.length];
-                const displayLabel = `${s.provider.toUpperCase()} \u00b7 ${metricLabels[s.metric_key] || s.label}`;
-
-                const points = s.points
-                    .map(p => {
-                        const x = chartTimeValue(p.recorded_at);
-                        const y = metricPointValue(p);
-                        return (x !== null && y !== null) ? { x, y } : null;
-                    })
-                    .filter(Boolean);
-
-                // Extend last point to now for a step-like effect
-                if (points.length > 0) {
-                    const last = points[points.length - 1];
-                    const endTs = xMax || nowTs;
-                    if (endTs > last.x) {
-                        points.push({ x: endTs, y: last.y });
-                    }
-                }
-
-                return {
-                    key: datasetKey,
-                    label: displayLabel,
-                    color,
-                    group: group.group,
-                    groupOrder: group.order,
-                    groupTitle: group.title,
-                    groupSubtitle: group.subtitle,
-                    data: points,
-                };
-            })
-            .filter(ds => ds.data.length > 0);
-
-        const apexSeries = allDatasets.map(ds => ({
-            name: ds.label,
-            data: ds.data,
-        }));
-
-        const apexOptions = {
-            series: apexSeries,
+    function chartGroupForSeries(metricKey, label) {
+        const classification = classifyMetric("", metricKey, label, null);
+        return classification.group === "session" || classification.group === "weekly"
+            ? classification.group
+            : null;
+    }
+    function buildDatasets(series, rangeEndTs) {
+        const grouped = { session: [], weekly: [] };
+        series.forEach((item, index) => {
+            const groupKey = chartGroupForSeries(item.metric_key, item.label);
+            if (!groupKey) return;
+            const rangeStartTs = rangeEndTs - chartConfigs[groupKey].rangeMs;
+            const rawPoints = item.points
+                .map(point => {
+                    const x = chartTimeValue(point.recorded_at);
+                    const y = metricPointValue(point);
+                    return (x !== null && y !== null) ? { x, y } : null;
+                })
+                .filter(Boolean);
+            const densePoints = densifySeriesPoints(rawPoints, rangeStartTs, rangeEndTs);
+            if (!densePoints.length) return;
+            grouped[groupKey].push({
+                key: `${item.provider}:${item.metric_key}`,
+                label: `${item.provider.toUpperCase()} \u00b7 ${metricLabels[item.metric_key] || item.label}`,
+                color: chartColors[index % chartColors.length],
+                data: densePoints,
+            });
+        });
+        return grouped;
+    }
+    function buildChartOptions(datasets, xMin, xMax) {
+        return {
+            series: datasets.map(dataset => ({
+                name: dataset.label,
+                data: dataset.data,
+            })),
             chart: {
                 type: "area",
                 height: 340,
@@ -686,14 +717,11 @@
                 },
                 zoom: { enabled: true },
                 animations: {
-                    enabled: true,
-                    easing: "easeinout",
-                    speed: 600,
-                    dynamicAnimation: { enabled: true, speed: 350 },
+                    enabled: false,
                 },
                 selection: { enabled: true },
             },
-            colors: allDatasets.map(ds => ds.color),
+            colors: datasets.map(dataset => dataset.color),
             stroke: {
                 curve: "stepline",
                 width: 2.5,
@@ -756,31 +784,54 @@
             dataLabels: { enabled: false },
             theme: { mode: "dark" },
         };
+    }
+    function destroyChart(groupKey) {
+        if (apexCharts[groupKey]) {
+            apexCharts[groupKey].destroy();
+            apexCharts[groupKey] = null;
+        }
+    }
+    function renderChartGroup(groupKey, rangeEndTs) {
+        const config = chartConfigs[groupKey];
+        const datasets = datasetsForGroup(groupKey);
+        const xMin = rangeEndTs - config.rangeMs;
+        const xMax = rangeEndTs;
+        const el = document.getElementById(config.chartId);
+        const empty = document.getElementById(config.emptyId);
 
-        if (apexChart) {
-            apexChart.destroy();
-            apexChart = null;
+        destroyChart(groupKey);
+        el.innerHTML = "";
+
+        if (!datasets.length) {
+            empty.textContent = config.emptyMessage;
+            empty.style.display = "block";
+            return;
         }
 
-        const el = document.getElementById("utilization-chart");
-        el.innerHTML = "";
-        apexChart = new ApexCharts(el, apexOptions);
-        apexChart.render().then(() => {
-            // Apply hidden series after render
-            allDatasets.forEach((ds) => {
-                if (hiddenSeriesKeys.has(ds.key)) {
-                    apexChart.hideSeries(ds.label);
+        empty.style.display = "none";
+        apexCharts[groupKey] = new ApexCharts(el, buildChartOptions(datasets, xMin, xMax));
+        apexCharts[groupKey].render().then(() => {
+            datasets.forEach((dataset) => {
+                if (!apexCharts[groupKey]) return;
+                if (hiddenSeriesKeys.has(dataset.key)) {
+                    apexCharts[groupKey].hideSeries(dataset.label);
                 }
             });
         });
-
-        renderSeriesChips();
+    }
+    function renderCharts(series) {
+        const rangeEndTs = chartTimeValue(currentRangeEndAt) || Date.now();
+        allDatasets = buildDatasets(series, rangeEndTs);
+        Object.keys(chartConfigs).forEach((groupKey) => {
+            renderChartGroup(groupKey, rangeEndTs);
+        });
+        renderAllSeriesChips();
     }
 
     async function loadData(pushState = false) {
         const loadToken = ++activeLoadToken;
         const query = buildQuery();
-        if (pushState) history.replaceState({}, "", query ? `/?${query}` : "/");
+        if (pushState) history.replaceState({}, "", "/");
         if (refreshTimeoutId !== null) clearTimeout(refreshTimeoutId);
         nextRefreshAt = null;
         latestRefreshError = "";
@@ -794,9 +845,7 @@
             if (loadToken !== activeLoadToken) return;
             pollIntervalSeconds = Math.max(60, Number(data.poll_interval_seconds) || pollIntervalSeconds);
             metricLabels = data.metric_labels || {};
-            currentRangeStartAt = data.filters ? data.filters.start_at : null;
             currentRangeEndAt = data.filters ? data.filters.end_at : null;
-            seriesGroupMeta = buildSeriesGroupMeta(data.latest);
             latestRefreshSourceAt = getLatestRefreshSource(data.latest, data.states);
             const previousCheckedAt = latestCheckedAt;
             const nextCheckedAt = getLatestCheckedAt(data.states);
@@ -822,7 +871,7 @@
                 pendingBackendRefreshRetries += 1;
             }
             renderUsage(data.latest);
-            renderChart(data.series);
+            renderCharts(data.series);
         } catch (error) {
             if (loadToken !== activeLoadToken) return;
             latestRefreshError = error instanceof Error ? error.message : "Refresh failed";
@@ -834,7 +883,6 @@
     }
 
     applyStoredDashboardPreferences();
-    syncPeriodChips();
     startRefreshTicker();
     updateRefreshStatus();
     loadData(true);
