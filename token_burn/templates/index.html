@@ -252,10 +252,11 @@
             <div class="series-group-header">
                 <div class="series-group-title">
                     <strong>5h windows</strong>
-                    <span>Primary and short-session limits over the last 5 hours</span>
+                    <span>Primary and short-session limits</span>
                 </div>
                 <button type="button" class="series-group-toggle" id="session-group-toggle" onclick="toggleGroup('session')">Hide all</button>
             </div>
+            <div class="period-toggles" id="session-period-toggles"></div>
             <div class="series-group-chips" id="session-series-toggles"></div>
             <div class="chart-wrap">
                 <div id="session-chart"></div>
@@ -267,10 +268,11 @@
             <div class="series-group-header">
                 <div class="series-group-title">
                     <strong>7d windows</strong>
-                    <span>Secondary and weekly limits over the last 7 days</span>
+                    <span>Secondary and weekly limits</span>
                 </div>
                 <button type="button" class="series-group-toggle" id="weekly-group-toggle" onclick="toggleGroup('weekly')">Hide all</button>
             </div>
+            <div class="period-toggles" id="weekly-period-toggles"></div>
             <div class="series-group-chips" id="weekly-series-toggles"></div>
             <div class="chart-wrap">
                 <div id="weekly-chart"></div>
@@ -289,31 +291,45 @@
 
     <script>
     const chartColors = ["#ff7a18","#31c4ff","#7ce38b","#c38cff","#ffd166","#ff6b6b","#7bdff2","#b8f2e6"];
-    const dashboardStorageKey = "token-burn.dashboard.preferences.v2";
+    const dashboardStorageKey = "token-burn.dashboard.preferences.v3";
     const fallbackRefreshSeconds = 30;
     const refreshBufferMs = 3000;
     const chartStepMs = 60 * 1000;
-    const historyPeriod = "7d";
+    const chartPeriodOptions = {
+        session: [
+            { value: "1h", label: "1h" },
+            { value: "5h", label: "5h" },
+            { value: "24h", label: "24h" },
+            { value: "7d", label: "7d" },
+        ],
+        weekly: [
+            { value: "24h", label: "24h" },
+            { value: "7d", label: "7d" },
+            { value: "30d", label: "30d" },
+            { value: "90d", label: "90d" },
+        ],
+    };
     const chartConfigs = {
         session: {
             chartId: "session-chart",
             emptyId: "session-chart-empty",
+            periodsId: "session-period-toggles",
             controlsId: "session-series-toggles",
             toggleId: "session-group-toggle",
-            rangeMs: 5 * 60 * 60 * 1000,
             emptyMessage: "No 5h window history yet.",
         },
         weekly: {
             chartId: "weekly-chart",
             emptyId: "weekly-chart-empty",
+            periodsId: "weekly-period-toggles",
             controlsId: "weekly-series-toggles",
             toggleId: "weekly-group-toggle",
-            rangeMs: 7 * 24 * 60 * 60 * 1000,
             emptyMessage: "No 7d window history yet.",
         },
     };
     let apexCharts = { session: null, weekly: null };
     let allDatasets = { session: [], weekly: [] };
+    let selectedChartPeriods = { session: "5h", weekly: "7d" };
     let hiddenSeriesKeys = new Set();
     let pollIntervalSeconds = Math.max(60, Number("{{ poll_interval_seconds }}") || 60);
     let activeLoadToken = 0;
@@ -332,7 +348,7 @@
     function buildQuery() {
         const p = new URLSearchParams();
         p.set("provider", "all");
-        p.set("period", historyPeriod);
+        p.set("period", requestedBackendPeriod());
         return p.toString();
     }
 
@@ -349,15 +365,66 @@
     function saveDashboardPreferences() {
         try {
             window.localStorage.setItem(dashboardStorageKey, JSON.stringify({
+                chartPeriods: selectedChartPeriods,
                 hiddenSeriesKeys: Array.from(hiddenSeriesKeys),
             }));
         } catch {}
     }
     function applyStoredDashboardPreferences() {
         const stored = getStoredDashboardPreferences();
+        if (stored.chartPeriods && typeof stored.chartPeriods === "object") {
+            Object.keys(chartPeriodOptions).forEach((groupKey) => {
+                const period = normalizeChartPeriod(groupKey, stored.chartPeriods[groupKey]);
+                if (period) selectedChartPeriods[groupKey] = period;
+            });
+        }
         if (Array.isArray(stored.hiddenSeriesKeys)) {
             hiddenSeriesKeys = new Set(stored.hiddenSeriesKeys.filter(value => typeof value === "string"));
         }
+    }
+    function normalizeChartPeriod(groupKey, period) {
+        return chartPeriodOptions[groupKey].some(option => option.value === period) ? period : null;
+    }
+    function chartPeriodToRangeMs(period) {
+        switch (period) {
+            case "1h": return 60 * 60 * 1000;
+            case "5h": return 5 * 60 * 60 * 1000;
+            case "24h": return 24 * 60 * 60 * 1000;
+            case "7d": return 7 * 24 * 60 * 60 * 1000;
+            case "30d": return 30 * 24 * 60 * 60 * 1000;
+            case "90d": return 90 * 24 * 60 * 60 * 1000;
+            default: return 7 * 24 * 60 * 60 * 1000;
+        }
+    }
+    function chartPeriodToBackendPeriod(period) {
+        if (period === "1h") return "1h";
+        if (period === "5h" || period === "24h") return "24h";
+        return period;
+    }
+    function requestedBackendPeriod() {
+        const order = ["1h", "24h", "7d", "30d", "90d"];
+        const requested = Object.values(selectedChartPeriods)
+            .map(chartPeriodToBackendPeriod)
+            .sort((a, b) => order.indexOf(a) - order.indexOf(b));
+        return requested.length ? requested[requested.length - 1] : "7d";
+    }
+    function renderPeriodChips(groupKey) {
+        const container = document.getElementById(chartConfigs[groupKey].periodsId);
+        container.innerHTML = chartPeriodOptions[groupKey].map((option) => {
+            const active = selectedChartPeriods[groupKey] === option.value ? "active" : "";
+            return `<span class="period-chip ${active}" onclick="setChartPeriod('${groupKey}', '${option.value}')">${option.label}</span>`;
+        }).join("");
+    }
+    function renderAllPeriodChips() {
+        Object.keys(chartPeriodOptions).forEach(renderPeriodChips);
+    }
+    function setChartPeriod(groupKey, period) {
+        const normalized = normalizeChartPeriod(groupKey, period);
+        if (!normalized || selectedChartPeriods[groupKey] === normalized) return;
+        selectedChartPeriods[groupKey] = normalized;
+        saveDashboardPreferences();
+        renderPeriodChips(groupKey);
+        loadData(true);
     }
 
     function safeDate(v) { return v ? new Date(v) : null; }
@@ -672,7 +739,7 @@
         series.forEach((item, index) => {
             const groupKey = chartGroupForSeries(item.metric_key, item.label);
             if (!groupKey) return;
-            const rangeStartTs = rangeEndTs - chartConfigs[groupKey].rangeMs;
+            const rangeStartTs = rangeEndTs - chartPeriodToRangeMs(selectedChartPeriods[groupKey]);
             const rawPoints = item.points
                 .map(point => {
                     const x = chartTimeValue(point.recorded_at);
@@ -794,7 +861,7 @@
     function renderChartGroup(groupKey, rangeEndTs) {
         const config = chartConfigs[groupKey];
         const datasets = datasetsForGroup(groupKey);
-        const xMin = rangeEndTs - config.rangeMs;
+        const xMin = rangeEndTs - chartPeriodToRangeMs(selectedChartPeriods[groupKey]);
         const xMax = rangeEndTs;
         const el = document.getElementById(config.chartId);
         const empty = document.getElementById(config.emptyId);
@@ -883,6 +950,7 @@
     }
 
     applyStoredDashboardPreferences();
+    renderAllPeriodChips();
     startRefreshTicker();
     updateRefreshStatus();
     loadData(true);
