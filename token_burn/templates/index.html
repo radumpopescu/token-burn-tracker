@@ -287,6 +287,8 @@
     let nextRefreshAt = null;
     let latestRefreshSourceAt = null;
     let latestCheckedAt = null;
+    let pendingBackendRefreshRetry = false;
+    let pendingBackendRefreshRetries = 0;
     let currentRangeStartAt = null;
     let currentRangeEndAt = null;
     let seriesGroupMeta = {};
@@ -457,7 +459,11 @@
         if (latestCheckedAt) {
             const intervalMs = pollIntervalSeconds * 1000;
             let scheduledAt = latestCheckedAt.getTime() + intervalMs + refreshBufferMs;
-            while (scheduledAt <= Date.now()) scheduledAt += intervalMs;
+            if (pendingBackendRefreshRetry) {
+                scheduledAt = Date.now() + Math.min(5000, Math.max(1500, refreshBufferMs));
+            } else {
+                while (scheduledAt <= Date.now()) scheduledAt += intervalMs;
+            }
             nextRefreshAt = scheduledAt;
             const delayMs = Math.max(1000, nextRefreshAt - Date.now());
             refreshTimeoutId = window.setTimeout(() => loadData(false), delayMs);
@@ -792,7 +798,29 @@
             currentRangeEndAt = data.filters ? data.filters.end_at : null;
             seriesGroupMeta = buildSeriesGroupMeta(data.latest);
             latestRefreshSourceAt = getLatestRefreshSource(data.latest, data.states);
-            latestCheckedAt = getLatestCheckedAt(data.states);
+            const previousCheckedAt = latestCheckedAt;
+            const nextCheckedAt = getLatestCheckedAt(data.states);
+            const previousCheckedAtMs = previousCheckedAt ? previousCheckedAt.getTime() : null;
+            const nextCheckedAtMs = nextCheckedAt ? nextCheckedAt.getTime() : null;
+            const backendAdvanced = nextCheckedAtMs !== null && (previousCheckedAtMs === null || nextCheckedAtMs > previousCheckedAtMs);
+            const expectedBackendRefreshAt = nextCheckedAtMs !== null
+                ? nextCheckedAtMs + (pollIntervalSeconds * 1000) + refreshBufferMs
+                : null;
+            const backendLooksOverdue = Boolean(
+                previousCheckedAtMs !== null &&
+                nextCheckedAtMs !== null &&
+                nextCheckedAtMs === previousCheckedAtMs &&
+                expectedBackendRefreshAt !== null &&
+                Date.now() >= expectedBackendRefreshAt
+            );
+
+            latestCheckedAt = nextCheckedAt;
+            pendingBackendRefreshRetry = backendLooksOverdue && pendingBackendRefreshRetries < 3;
+            if (backendAdvanced || !backendLooksOverdue) {
+                pendingBackendRefreshRetries = 0;
+            } else if (pendingBackendRefreshRetry) {
+                pendingBackendRefreshRetries += 1;
+            }
             renderUsage(data.latest);
             renderChart(data.series);
         } catch (error) {
