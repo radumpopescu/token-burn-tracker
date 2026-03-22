@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime, timezone
-import os
 from typing import Any
 
 from .collectors import collect_usage
 from .crypto import SecretBox
-from .db import Database
+from .db import DEFAULT_HEARTBEAT_INTERVAL_SECONDS, DEFAULT_POLL_INTERVAL_SECONDS, Database
 
 
 class UsageMonitorService:
@@ -108,15 +107,12 @@ class UsageMonitorService:
 
     def _poll_interval_seconds(self) -> int:
         settings = self.db.get_app_settings()
-        raw_value = settings.get("poll_interval_seconds", os.environ.get("POLL_INTERVAL_SECONDS", "60"))
-        return max(60, int(raw_value))
+        raw_value = settings.get("poll_interval_seconds", str(DEFAULT_POLL_INTERVAL_SECONDS))
+        return max(DEFAULT_POLL_INTERVAL_SECONDS, int(raw_value))
 
     def _heartbeat_interval_seconds(self) -> int:
         settings = self.db.get_app_settings()
-        raw_value = settings.get(
-            "heartbeat_interval_seconds",
-            os.environ.get("HEARTBEAT_INTERVAL_SECONDS", "3600"),
-        )
+        raw_value = settings.get("heartbeat_interval_seconds", str(DEFAULT_HEARTBEAT_INTERVAL_SECONDS))
         return max(300, int(raw_value))
 
     def _heartbeat_due(self, last_snapshot_at: str | None) -> bool:

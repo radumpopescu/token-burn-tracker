@@ -166,7 +166,7 @@
                     <div class="fields">
                         <div class="field">
                             <label for="poll_interval_seconds">Poll interval (s)</label>
-                            <input id="poll_interval_seconds" name="poll_interval_seconds" type="number" min="60" value="{{ settings.get('poll_interval_seconds', '300') }}">
+                            <input id="poll_interval_seconds" name="poll_interval_seconds" type="number" min="60" value="{{ settings.get('poll_interval_seconds', '60') }}">
                         </div>
                         <div class="field">
                             <label for="heartbeat_interval_seconds">Heartbeat interval (s)</label>

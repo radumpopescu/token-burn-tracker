@@ -13,6 +13,8 @@ from .models import ProviderConfig, UsageSnapshot
 from .providers import provider_choices
 
 DB_SENTINEL = object()
+DEFAULT_POLL_INTERVAL_SECONDS = 60
+DEFAULT_HEARTBEAT_INTERVAL_SECONDS = 3600
 
 
 class Database:
@@ -32,7 +34,7 @@ class Database:
         finally:
             conn.close()
 
-    def init_db(self, poll_interval_seconds: int, heartbeat_interval_seconds: int) -> None:
+    def init_db(self) -> None:
         with self.connect() as conn:
             conn.executescript(
                 """
@@ -106,8 +108,8 @@ class Database:
 
             now = _utcnow()
             for key, value in (
-                ("poll_interval_seconds", str(poll_interval_seconds)),
-                ("heartbeat_interval_seconds", str(heartbeat_interval_seconds)),
+                ("poll_interval_seconds", str(DEFAULT_POLL_INTERVAL_SECONDS)),
+                ("heartbeat_interval_seconds", str(DEFAULT_HEARTBEAT_INTERVAL_SECONDS)),
             ):
                 conn.execute(
                     """

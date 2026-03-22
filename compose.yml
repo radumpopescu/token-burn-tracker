@@ -1,14 +1,14 @@
 services:
   token-burn:
     build: .
+    env_file:
+      - .env
     ports:
       - "${TOKEN_BURN_PORT:-8574}:8000"
     environment:
       ADMIN_USERNAME: "${ADMIN_USERNAME:-admin}"
       ADMIN_PASSWORD: "${ADMIN_PASSWORD:-change-me}"
       APP_ENCRYPTION_KEY: "${APP_ENCRYPTION_KEY:-}"
-      POLL_INTERVAL_SECONDS: "${POLL_INTERVAL_SECONDS:-60}"
-      HEARTBEAT_INTERVAL_SECONDS: "${HEARTBEAT_INTERVAL_SECONDS:-3600}"
       TZ: "${TZ:-UTC}"
     volumes:
       - ./data:/app/data

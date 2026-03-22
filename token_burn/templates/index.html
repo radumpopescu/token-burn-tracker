@@ -30,7 +30,7 @@
             color: var(--text);
             min-height: 100vh;
         }
-        .page { max-width: 1200px; margin: 0 auto; padding: 24px 24px 48px; }
+        .page { max-width: 1200px; margin: 0 auto; padding: 24px 24px 104px; }
 
         .topbar {
             display: flex; justify-content: space-between; align-items: center;
@@ -38,10 +38,36 @@
         }
         .topbar-left { display: flex; align-items: center; gap: 16px; }
         .topbar-left h1 { margin: 0; font-size: 1.4rem; letter-spacing: -0.02em; }
-        .pill {
+        .status-pill {
             display: inline-flex; align-items: center; min-height: 32px;
-            padding: 0 12px; border-radius: 10px; border: 1px solid var(--line);
+            gap: 10px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line);
             background: rgba(255,255,255,0.02); font-size: 0.78rem; color: var(--muted);
+        }
+        .status-dock {
+            position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
+            z-index: 20; display: flex; justify-content: center; width: max-content;
+            max-width: calc(100vw - 32px);
+        }
+        .status-pill.is-refreshing {
+            border-color: rgba(49,196,255,0.32);
+            box-shadow: 0 0 0 1px rgba(49,196,255,0.06) inset;
+        }
+        .status-pill.has-error {
+            border-color: rgba(255,106,106,0.45);
+            color: #ffd0d0;
+        }
+        .status-spinner {
+            --refresh-progress: 0;
+            position: relative; width: 12px; height: 12px; flex-shrink: 0; border-radius: 50%;
+            background: conic-gradient(var(--accent-2) calc(var(--refresh-progress) * 1%), rgba(255,255,255,0.12) 0);
+            animation: spin 1.2s linear infinite;
+        }
+        .status-spinner::after {
+            content: ""; position: absolute; inset: 2px; border-radius: 50%; background: var(--panel);
+        }
+        .status-copy { white-space: nowrap; }
+        .status-sep {
+            width: 1px; height: 12px; background: rgba(255,255,255,0.08); flex-shrink: 0;
         }
         .link-btn {
             display: inline-flex; align-items: center; justify-content: center;
@@ -112,7 +138,31 @@
 
         /* Series toggle chips */
         .series-toggles {
-            display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;
+            display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 12px;
+        }
+        .series-group {
+            min-width: 0; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px;
+            background: rgba(255,255,255,0.03); padding: 10px;
+        }
+        .series-group-header {
+            display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px;
+        }
+        .series-group-title {
+            display: flex; flex-direction: column; gap: 2px; min-width: 0;
+        }
+        .series-group-title strong {
+            font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted);
+        }
+        .series-group-title span {
+            font-size: 0.72rem; color: var(--muted);
+        }
+        .series-group-toggle {
+            display: inline-flex; align-items: center; justify-content: center; white-space: nowrap;
+            min-height: 28px; padding: 0 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.04); color: var(--text); font-size: 0.72rem; cursor: pointer;
+        }
+        .series-group-chips {
+            display: flex; flex-wrap: wrap; gap: 6px;
         }
         .series-chip {
             display: inline-flex; align-items: center; gap: 5px;
@@ -129,10 +179,19 @@
 
         .chart-wrap { position: relative; min-height: 300px; }
 
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
         @media (max-width: 760px) {
             .page { padding: 14px 12px 32px; }
             .topbar { flex-direction: column; align-items: flex-start; }
+            .topbar-left { flex-wrap: wrap; }
             .usage-grid { grid-template-columns: 1fr; }
+            .series-toggles { grid-template-columns: 1fr; }
+            .status-pill { width: 100%; flex-wrap: wrap; }
+            .status-dock { left: 12px; right: 12px; bottom: 12px; transform: none; width: auto; max-width: none; }
+            .status-sep { display: none; }
         }
     </style>
 </head>
@@ -141,7 +200,6 @@
         <section class="topbar">
             <div class="topbar-left">
                 <h1>Token Burn</h1>
-                <span class="pill">Poll {{ poll_interval_seconds }}s / HB {{ heartbeat_interval_seconds }}s</span>
             </div>
             <a class="link-btn primary" href="/settings">Settings</a>
         </section>
@@ -153,7 +211,7 @@
         <section class="chart-section">
             <h2>Usage over time</h2>
             <div class="period-toggles" id="period-toggles">
-                {% for value, label in [("24h","24h"),("7d","7d"),("30d","30d"),("90d","90d"),("all","All")] %}
+                {% for value, label in [("1h","1h"),("24h","24h"),("7d","7d"),("30d","30d"),("90d","90d"),("all","All")] %}
                 <span class="period-chip {% if filters.period == value %}active{% endif %}" data-period="{{ value }}" onclick="setPeriod('{{ value }}', this)">{{ label }}</span>
                 {% endfor %}
             </div>
@@ -163,13 +221,37 @@
             </div>
         </section>
     </div>
+    <div class="status-dock">
+        <span class="status-pill" id="refresh-status-pill" aria-live="polite">
+            <span class="status-spinner" id="refresh-spinner" aria-hidden="true"></span>
+            <span class="status-copy" id="last-updated-label">Loading latest status...</span>
+            <span class="status-sep" aria-hidden="true"></span>
+            <span class="status-copy" id="next-refresh-label">Scheduling refresh...</span>
+        </span>
+    </div>
 
     <script>
     const chartColors = ["#ff7a18","#31c4ff","#7ce38b","#c38cff","#ffd166","#ff6b6b","#7bdff2","#b8f2e6"];
+    const dashboardStorageKey = "token-burn.dashboard.preferences.v1";
+    const fallbackRefreshSeconds = 30;
+    const refreshBufferMs = 3000;
+    const allowedPeriods = new Set(["1h", "24h", "7d", "30d", "90d", "all"]);
     let utilizationChart;
     let allDatasets = [];
-    const hiddenSeries = new Set();
+    let hiddenSeriesKeys = new Set();
     let currentPeriod = "{{ filters.period }}";
+    let pollIntervalSeconds = Math.max(60, Number("{{ poll_interval_seconds }}") || 60);
+    let activeLoadToken = 0;
+    let refreshTimeoutId = null;
+    let refreshTickerId = null;
+    let nextRefreshAt = null;
+    let latestRefreshSourceAt = null;
+    let latestCheckedAt = null;
+    let currentRangeStartAt = null;
+    let currentRangeEndAt = null;
+    let seriesGroupMeta = {};
+    let latestRefreshError = "";
+    let isRefreshing = false;
 
     function buildQuery() {
         const p = new URLSearchParams();
@@ -178,10 +260,44 @@
         return p.toString();
     }
 
+    function getStoredDashboardPreferences() {
+        try {
+            const raw = window.localStorage.getItem(dashboardStorageKey);
+            if (!raw) return {};
+            const parsed = JSON.parse(raw);
+            return parsed && typeof parsed === "object" ? parsed : {};
+        } catch {
+            return {};
+        }
+    }
+    function saveDashboardPreferences() {
+        try {
+            window.localStorage.setItem(dashboardStorageKey, JSON.stringify({
+                period: currentPeriod,
+                hiddenSeriesKeys: Array.from(hiddenSeriesKeys),
+            }));
+        } catch {}
+    }
+    function applyStoredDashboardPreferences() {
+        const searchPeriod = new URLSearchParams(window.location.search).get("period");
+        const stored = getStoredDashboardPreferences();
+        if (searchPeriod && allowedPeriods.has(searchPeriod)) currentPeriod = searchPeriod;
+        else if (allowedPeriods.has(stored.period)) currentPeriod = stored.period;
+
+        if (Array.isArray(stored.hiddenSeriesKeys)) {
+            hiddenSeriesKeys = new Set(stored.hiddenSeriesKeys.filter(value => typeof value === "string"));
+        }
+    }
+    function syncPeriodChips() {
+        document.querySelectorAll(".period-chip").forEach((chip) => {
+            chip.classList.toggle("active", chip.dataset.period === currentPeriod);
+        });
+    }
     function setPeriod(period, el) {
+        if (!allowedPeriods.has(period)) return;
         currentPeriod = period;
-        document.querySelectorAll(".period-chip").forEach(c => c.classList.remove("active"));
-        el.classList.add("active");
+        syncPeriodChips();
+        saveDashboardPreferences();
         loadData(true);
     }
 
@@ -190,6 +306,11 @@
         const d = safeDate(v);
         if (!d || Number.isNaN(d.getTime())) return "\u2014";
         return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(d);
+    }
+    function chartTimeValue(v) {
+        const d = safeDate(v);
+        if (!d || Number.isNaN(d.getTime())) return null;
+        return d.getTime();
     }
     function fmtRelative(v) {
         const d = safeDate(v);
@@ -213,6 +334,97 @@
         const h = Math.floor(abs / 3600);
         const m = Math.round((abs % 3600) / 60);
         return m > 0 ? `${h} hr ${m} min` : `${h} hr`;
+    }
+    function fmtShortDuration(totalSeconds) {
+        const sec = Math.max(0, Math.round(totalSeconds));
+        if (sec < 60) return `${sec}s`;
+        if (sec < 3600) {
+            const min = Math.floor(sec / 60);
+            const rem = sec % 60;
+            return min < 10 && rem ? `${min}m ${rem}s` : `${min}m`;
+        }
+        const hr = Math.floor(sec / 3600);
+        const min = Math.floor((sec % 3600) / 60);
+        return min ? `${hr}h ${min}m` : `${hr}h`;
+    }
+    function fmtElapsedFromNow(v) {
+        const d = safeDate(v);
+        if (!d || Number.isNaN(d.getTime())) return "Waiting for first update";
+        const elapsedSeconds = Math.max(0, Math.round((Date.now() - d.getTime()) / 1000));
+        if (elapsedSeconds < 5) return "Updated just now";
+        return `Updated ${fmtShortDuration(elapsedSeconds)} ago`;
+    }
+    function fmtNextRefresh() {
+        if (isRefreshing) return "Refreshing now";
+        if (!nextRefreshAt) return "Scheduling refresh...";
+        const remainingSeconds = Math.max(0, Math.ceil((nextRefreshAt - Date.now()) / 1000));
+        if (remainingSeconds <= 1) return "Refreshing momentarily";
+        return `Next refresh in ${fmtShortDuration(remainingSeconds)}`;
+    }
+    function getLatestRefreshSource(latest, states) {
+        const candidates = [];
+        Object.values(states || {}).forEach((state) => {
+            if (state && state.last_success_at) candidates.push(state.last_success_at);
+            else if (state && state.last_checked_at) candidates.push(state.last_checked_at);
+        });
+        Object.values(latest || {}).forEach((snapshot) => {
+            if (snapshot && snapshot.recorded_at) candidates.push(snapshot.recorded_at);
+        });
+        return candidates
+            .map(safeDate)
+            .filter((date) => date && !Number.isNaN(date.getTime()))
+            .sort((a, b) => b.getTime() - a.getTime())[0] || null;
+    }
+    function getLatestCheckedAt(states) {
+        return Object.values(states || {})
+            .map(state => safeDate(state && state.last_checked_at))
+            .filter((date) => date && !Number.isNaN(date.getTime()))
+            .sort((a, b) => b.getTime() - a.getTime())[0] || null;
+    }
+    function buildSeriesGroupMeta(latest) {
+        const meta = {};
+        Object.entries(latest || {}).forEach(([provider, snapshot]) => {
+            (snapshot.metrics || []).forEach((metric) => {
+                meta[`${provider}:${metric.metric_key}`] = classifyMetric(provider, metric.label, metric.resets_at);
+            });
+        });
+        return meta;
+    }
+    function updateRefreshStatus() {
+        const pill = document.getElementById("refresh-status-pill");
+        const spinner = document.getElementById("refresh-spinner");
+        const updatedLabel = document.getElementById("last-updated-label");
+        const nextLabel = document.getElementById("next-refresh-label");
+        const cycleMs = (latestCheckedAt ? pollIntervalSeconds : fallbackRefreshSeconds) * 1000;
+        const cycleStartAt = nextRefreshAt ? nextRefreshAt - cycleMs : null;
+        const progress = (cycleStartAt !== null && nextRefreshAt)
+            ? Math.max(0, Math.min(100, ((Date.now() - cycleStartAt) / cycleMs) * 100))
+            : 0;
+
+        pill.classList.toggle("is-refreshing", isRefreshing);
+        pill.classList.toggle("has-error", Boolean(latestRefreshError));
+        spinner.style.setProperty("--refresh-progress", progress.toFixed(1));
+        updatedLabel.textContent = latestRefreshError || fmtElapsedFromNow(latestRefreshSourceAt);
+        nextLabel.textContent = fmtNextRefresh();
+    }
+    function startRefreshTicker() {
+        if (refreshTickerId !== null) clearInterval(refreshTickerId);
+        refreshTickerId = window.setInterval(updateRefreshStatus, 1000);
+    }
+    function scheduleNextRefresh() {
+        if (refreshTimeoutId !== null) clearTimeout(refreshTimeoutId);
+        if (latestCheckedAt) {
+            const intervalMs = pollIntervalSeconds * 1000;
+            let scheduledAt = latestCheckedAt.getTime() + intervalMs + refreshBufferMs;
+            while (scheduledAt <= Date.now()) scheduledAt += intervalMs;
+            nextRefreshAt = scheduledAt;
+            const delayMs = Math.max(1000, nextRefreshAt - Date.now());
+            refreshTimeoutId = window.setTimeout(() => loadData(false), delayMs);
+        } else {
+            nextRefreshAt = Date.now() + fallbackRefreshSeconds * 1000;
+            refreshTimeoutId = window.setTimeout(() => loadData(false), fallbackRefreshSeconds * 1000);
+        }
+        updateRefreshStatus();
     }
     function barClass(pct) { return pct >= 80 ? "high" : pct >= 50 ? "mid" : "low"; }
     function metricPointValue(p) {
@@ -292,17 +504,60 @@
 
     function renderSeriesChips() {
         const container = document.getElementById("series-toggles");
-        container.innerHTML = allDatasets.map((ds, i) => {
-            const isOff = hiddenSeries.has(i);
-            return `<span class="series-chip ${isOff ? "off" : ""}" data-index="${i}" onclick="toggleSeries(${i})">
-                <span class="dot" style="background:${ds.borderColor}"></span>${ds.label}
-            </span>`;
-        }).join("");
+        const groups = {};
+        allDatasets.forEach((dataset) => {
+            const group = groups[dataset.group] || {
+                key: dataset.group,
+                title: dataset.groupTitle,
+                subtitle: dataset.groupSubtitle,
+                order: dataset.groupOrder,
+                datasets: [],
+            };
+            group.datasets.push(dataset);
+            groups[dataset.group] = group;
+        });
+
+        container.innerHTML = Object.values(groups)
+            .sort((a, b) => a.order - b.order)
+            .map((group) => {
+                const visibleCount = group.datasets.filter(ds => !hiddenSeriesKeys.has(ds.key)).length;
+                const toggleLabel = visibleCount === 0 ? "Show all" : "Hide all";
+                const chips = group.datasets.map((dataset) => {
+                    const isOff = hiddenSeriesKeys.has(dataset.key);
+                    return `<span class="series-chip ${isOff ? "off" : ""}" data-key="${dataset.key}" onclick='toggleSeries(${JSON.stringify(dataset.key)})'>
+                        <span class="dot" style="background:${dataset.borderColor}"></span>${dataset.label}
+                    </span>`;
+                }).join("");
+                return `<div class="series-group">
+                    <div class="series-group-header">
+                        <div class="series-group-title">
+                            <strong>${group.title}</strong>
+                            ${group.subtitle ? `<span>${group.subtitle}</span>` : ""}
+                        </div>
+                        <button type="button" class="series-group-toggle" onclick='toggleGroup(${JSON.stringify(group.key)})'>${toggleLabel}</button>
+                    </div>
+                    <div class="series-group-chips">${chips}</div>
+                </div>`;
+            })
+            .join("");
     }
 
-    function toggleSeries(index) {
-        if (hiddenSeries.has(index)) hiddenSeries.delete(index);
-        else hiddenSeries.add(index);
+    function toggleSeries(key) {
+        if (hiddenSeriesKeys.has(key)) hiddenSeriesKeys.delete(key);
+        else hiddenSeriesKeys.add(key);
+        saveDashboardPreferences();
+        updateChartVisibility();
+        renderSeriesChips();
+    }
+    function toggleGroup(groupKey) {
+        const datasets = allDatasets.filter(ds => ds.group === groupKey);
+        if (!datasets.length) return;
+        const shouldShowAll = datasets.every(ds => hiddenSeriesKeys.has(ds.key));
+        datasets.forEach((dataset) => {
+            if (shouldShowAll) hiddenSeriesKeys.delete(dataset.key);
+            else hiddenSeriesKeys.add(dataset.key);
+        });
+        saveDashboardPreferences();
         updateChartVisibility();
         renderSeriesChips();
     }
@@ -310,22 +565,41 @@
     function updateChartVisibility() {
         if (!utilizationChart) return;
         allDatasets.forEach((ds, i) => {
-            utilizationChart.setDatasetVisibility(i, !hiddenSeries.has(i));
+            utilizationChart.setDatasetVisibility(i, !hiddenSeriesKeys.has(ds.key));
         });
         utilizationChart.update("none");
     }
 
     function renderChart(series) {
+        const xMin = chartTimeValue(currentRangeStartAt);
+        const xMax = chartTimeValue(currentRangeEndAt);
         allDatasets = series
-            .filter(s => s.points.some(p => metricPointValue(p) !== null))
-            .map((s, i) => ({
-                label: `${s.provider.toUpperCase()} \u00b7 ${metricLabels[s.metric_key] || s.label}`,
-                data: s.points.map(p => ({ x: p.recorded_at, y: metricPointValue(p) })),
-                borderColor: chartColors[i % chartColors.length],
-                backgroundColor: chartColors[i % chartColors.length] + "33",
-                tension: 0.28, fill: false, pointRadius: 2,
-                hidden: hiddenSeries.has(i)
-            }));
+            .map((s, i) => {
+                const datasetKey = `${s.provider}:${s.metric_key}`;
+                const group = seriesGroupMeta[datasetKey] || classifyMetric(s.provider, s.label, null);
+                const points = s.points
+                    .map(p => ({ x: chartTimeValue(p.recorded_at), y: metricPointValue(p) }))
+                    .filter(p => p.x !== null && p.y !== null);
+                return {
+                    key: datasetKey,
+                    label: `${s.provider.toUpperCase()} \u00b7 ${metricLabels[s.metric_key] || s.label}`,
+                    data: points,
+                    borderColor: chartColors[i % chartColors.length],
+                    backgroundColor: chartColors[i % chartColors.length] + "33",
+                    borderWidth: 2,
+                    group: group.group,
+                    groupOrder: group.order,
+                    groupTitle: group.title,
+                    groupSubtitle: group.subtitle,
+                    tension: 0.28,
+                    fill: false,
+                    pointRadius: points.length === 1 ? 4 : 2.5,
+                    pointHoverRadius: 4,
+                    spanGaps: true,
+                    hidden: hiddenSeriesKeys.has(datasetKey)
+                };
+            })
+            .filter(ds => ds.data.length > 0);
 
         if (utilizationChart) utilizationChart.destroy();
         utilizationChart = new Chart(document.getElementById("utilization-chart"), {
@@ -335,7 +609,17 @@
                 interaction: { mode: "nearest", intersect: false },
                 parsing: false,
                 scales: {
-                    x: { type: "time", time: { tooltipFormat: "PPp", displayFormats: { hour: "MMM d, HH:mm", day: "MMM d" } }, ticks: { color: "#8ea6c4" }, grid: { color: "rgba(255,255,255,0.06)" } },
+                    x: {
+                        type: "time",
+                        min: xMin || undefined,
+                        max: xMax || undefined,
+                        time: {
+                            tooltipFormat: "PPp",
+                            displayFormats: { minute: "HH:mm", hour: "MMM d, HH:mm", day: "MMM d" }
+                        },
+                        ticks: { color: "#8ea6c4" },
+                        grid: { color: "rgba(255,255,255,0.06)" }
+                    },
                     y: { beginAtZero: true, max: 100, ticks: { color: "#8ea6c4", callback: v => v + "%" }, grid: { color: "rgba(255,255,255,0.06)" } }
                 },
                 plugins: {
@@ -347,17 +631,44 @@
     }
 
     async function loadData(pushState = false) {
+        const loadToken = ++activeLoadToken;
         const query = buildQuery();
         if (pushState) history.replaceState({}, "", query ? `/?${query}` : "/");
-        const res = await fetch(`/api/history?${query}`);
-        const data = await res.json();
-        metricLabels = data.metric_labels || {};
-        renderUsage(data.latest);
-        renderChart(data.series);
+        if (refreshTimeoutId !== null) clearTimeout(refreshTimeoutId);
+        nextRefreshAt = null;
+        latestRefreshError = "";
+        isRefreshing = true;
+        updateRefreshStatus();
+
+        try {
+            const res = await fetch(`/api/history?${query}`);
+            if (!res.ok) throw new Error(`Refresh failed (${res.status})`);
+            const data = await res.json();
+            if (loadToken !== activeLoadToken) return;
+            pollIntervalSeconds = Math.max(60, Number(data.poll_interval_seconds) || pollIntervalSeconds);
+            metricLabels = data.metric_labels || {};
+            currentRangeStartAt = data.filters ? data.filters.start_at : null;
+            currentRangeEndAt = data.filters ? data.filters.end_at : null;
+            seriesGroupMeta = buildSeriesGroupMeta(data.latest);
+            latestRefreshSourceAt = getLatestRefreshSource(data.latest, data.states);
+            latestCheckedAt = getLatestCheckedAt(data.states);
+            renderUsage(data.latest);
+            renderChart(data.series);
+        } catch (error) {
+            if (loadToken !== activeLoadToken) return;
+            latestRefreshError = error instanceof Error ? error.message : "Refresh failed";
+        } finally {
+            if (loadToken !== activeLoadToken) return;
+            isRefreshing = false;
+            scheduleNextRefresh();
+        }
     }
 
-    loadData(false);
-    setInterval(() => loadData(false), 60000);
+    applyStoredDashboardPreferences();
+    syncPeriodChips();
+    startRefreshTicker();
+    updateRefreshStatus();
+    loadData(true);
     </script>
 </body>
 </html>

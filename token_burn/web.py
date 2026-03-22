@@ -15,7 +15,12 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from .crypto import SecretBox
-from .db import DB_SENTINEL, Database
+from .db import (
+    DB_SENTINEL,
+    DEFAULT_HEARTBEAT_INTERVAL_SECONDS,
+    DEFAULT_POLL_INTERVAL_SECONDS,
+    Database,
+)
 from .providers import PROVIDER_SPECS, provider_choices
 from .request_imports import decode_secret_payload, encode_secret_payload, parse_curl_import
 from .security import admin_auth_enabled, require_admin
@@ -30,10 +35,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db = Database(DB_PATH)
-    db.init_db(
-        poll_interval_seconds=int(os.environ.get("POLL_INTERVAL_SECONDS", "60")),
-        heartbeat_interval_seconds=int(os.environ.get("HEARTBEAT_INTERVAL_SECONDS", "3600")),
-    )
+    db.init_db()
     secret_box = SecretBox(os.environ.get("APP_ENCRYPTION_KEY"))
     monitor = UsageMonitorService(db, secret_box)
     app.state.db = db
@@ -86,8 +88,11 @@ async def dashboard(
                 "start": filters["start_input"],
                 "end": filters["end_input"],
             },
-            "poll_interval_seconds": settings.get("poll_interval_seconds", "300"),
-            "heartbeat_interval_seconds": settings.get("heartbeat_interval_seconds", "3600"),
+            "poll_interval_seconds": settings.get("poll_interval_seconds", str(DEFAULT_POLL_INTERVAL_SECONDS)),
+            "heartbeat_interval_seconds": settings.get(
+                "heartbeat_interval_seconds",
+                str(DEFAULT_HEARTBEAT_INTERVAL_SECONDS),
+            ),
         },
     )
 
@@ -105,6 +110,10 @@ async def api_history(
     metric_labels = _parse_metric_labels(settings.get("metric_labels", "{}"))
     payload = {
         "filters": filters,
+        "poll_interval_seconds": max(
+            DEFAULT_POLL_INTERVAL_SECONDS,
+            int(settings.get("poll_interval_seconds", str(DEFAULT_POLL_INTERVAL_SECONDS))),
+        ),
         "metric_labels": metric_labels,
         "latest": db.latest_snapshots_by_provider(),
         "states": db.get_provider_states(),
@@ -301,7 +310,9 @@ def _resolve_range(period: str, start: str | None, end: str | None) -> dict[str,
         end_at = _parse_datetime(end)
 
     if start_at is None and end_at is None:
-        if period == "24h":
+        if period == "1h":
+            start_at = now - timedelta(hours=1)
+        elif period == "24h":
             start_at = now - timedelta(hours=24)
         elif period == "7d":
             start_at = now - timedelta(days=7)

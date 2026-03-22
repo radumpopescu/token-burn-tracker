@@ -5,7 +5,8 @@ Self-hosted usage monitor for Claude and ChatGPT/Codex API rate limits. Polls au
 ## Features
 
 - **Live dashboard** with Claude-style usage bars grouped by session and weekly windows
-- **Historical charts** with per-series toggles and period filters (auto-refreshes every 60s)
+- **Historical charts** with per-series toggles and period filters from `1h` to `All`
+- **Live refresh status** showing the latest successful update time and the next dashboard refresh countdown
 - **Custom metric labels** to rename default metric names in settings
 - **Curl import** for both providers - paste the full curl command from browser devtools
 - **Save & Test** flow with instant pass/fail feedback per provider
@@ -16,10 +17,13 @@ Self-hosted usage monitor for Claude and ChatGPT/Codex API rate limits. Polls au
 ## Quick start
 
 ```bash
+cp .env.example .env
 docker compose up --build
 ```
 
 Open `http://localhost:8574/settings` (default credentials: `admin` / `change-me`).
+
+Docker Compose reads configuration from `.env` and passes it into the container.
 
 ### Setup each provider
 
@@ -44,10 +48,12 @@ Open `http://localhost:8574/settings` (default credentials: `admin` / `change-me
 | `ADMIN_USERNAME` | `admin` | HTTP Basic Auth username |
 | `ADMIN_PASSWORD` | `change-me` | HTTP Basic Auth password (unset = auth disabled) |
 | `APP_ENCRYPTION_KEY` | _(none)_ | Fernet key for encrypting stored secrets |
-| `POLL_INTERVAL_SECONDS` | `60` | How often to poll usage endpoints |
-| `HEARTBEAT_INTERVAL_SECONDS` | `3600` | Max interval between stored snapshots |
 | `TOKEN_BURN_PORT` | `8574` | External port (Docker Compose) |
 | `TZ` | `UTC` | Timezone for the container |
+
+Start by copying `.env.example` to `.env` and adjusting the values you need.
+
+Polling defaults are stored in the database when it is first created: `60` seconds for polling and `3600` seconds for heartbeat snapshots. After that, change them from the Settings page.
 
 Generate an encryption key:
 
@@ -60,7 +66,7 @@ python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().
 1. The server stores cookies and auth tokens in SQLite (encrypted if `APP_ENCRYPTION_KEY` is set)
 2. A background poller checks the usage JSON endpoints on a fixed interval
 3. Snapshots are only written when the normalized response changes, plus periodic heartbeats so charts stay continuous
-4. The dashboard auto-refreshes every 60 seconds
+4. The dashboard auto-refreshes using the configured poll interval and shows the next refresh countdown
 5. No browser automation - it only replays saved cookies/tokens against JSON API endpoints
 
 ## Development
