@@ -7,7 +7,7 @@ services:
       - "${TOKEN_BURN_PORT:-8574}:8000"
     environment:
       ADMIN_USERNAME: "${ADMIN_USERNAME:-admin}"
-      ADMIN_PASSWORD: "${ADMIN_PASSWORD:-change-me}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:-}"
       APP_ENCRYPTION_KEY: "${APP_ENCRYPTION_KEY:-}"
       TZ: "${TZ:-UTC}"
     volumes:

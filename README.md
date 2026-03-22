@@ -21,7 +21,9 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Open `http://localhost:8574/settings` (default credentials: `admin` / `change-me`).
+Open `http://localhost:8574/settings`.
+
+Admin auth is optional. If `ADMIN_PASSWORD` is blank or omitted in `.env`, the settings page is not password protected. If you set `ADMIN_PASSWORD`, the default username is `admin` unless you also set `ADMIN_USERNAME`.
 
 Docker Compose reads configuration from `.env` and passes it into the container.
 
@@ -45,8 +47,8 @@ Docker Compose reads configuration from `.env` and passes it into the container.
 
 | Variable | Default | Description |
 |---|---|---|
-| `ADMIN_USERNAME` | `admin` | HTTP Basic Auth username |
-| `ADMIN_PASSWORD` | `change-me` | HTTP Basic Auth password (unset = auth disabled) |
+| `ADMIN_USERNAME` | `admin` | HTTP Basic Auth username when admin auth is enabled |
+| `ADMIN_PASSWORD` | _(blank)_ | HTTP Basic Auth password; blank or unset disables admin auth |
 | `APP_ENCRYPTION_KEY` | _(none)_ | Fernet key for encrypting stored secrets |
 | `TOKEN_BURN_PORT` | `8574` | External port (Docker Compose) |
 | `TZ` | `UTC` | Timezone for the container |
