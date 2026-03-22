@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime, timezone
+import json
 from typing import Any
 
 from .collectors import collect_usage
 from .crypto import SecretBox
 from .db import DEFAULT_HEARTBEAT_INTERVAL_SECONDS, DEFAULT_POLL_INTERVAL_SECONDS, Database
+from .models import UsageMetric
 
 
 class UsageMonitorService:
@@ -49,26 +51,39 @@ class UsageMonitorService:
                             self.secret_box.seal(collection.updated_secret_value),
                         )
                     state = self.db.get_provider_state(config.provider) or {}
-                    last_hash = state.get("last_hash")
-                    last_snapshot_at = state.get("last_snapshot_at")
-                    snapshot_hash = snapshot.snapshot_hash()
+                    previous_event = self.db.get_latest_snapshot(config.provider) or {}
+                    current_metrics = self.db.get_current_metrics(config.provider)
+                    state_hash = snapshot.state_hash()
+                    last_state_hash = state.get("last_hash")
+                    metrics_to_persist = self._metrics_to_persist(
+                        snapshot.metrics,
+                        current_metrics,
+                    )
+                    metadata_changed = previous_event.get("plan_name") != snapshot.plan_name
+                    removed_metrics = set(current_metrics) - {metric.key for metric in snapshot.metrics}
 
                     reason: str | None = None
-                    if not last_hash:
+                    if not last_state_hash:
                         reason = "initial"
-                    elif snapshot_hash != last_hash:
+                        metrics_to_persist = list(snapshot.metrics)
+                    elif state_hash != last_state_hash or metadata_changed or removed_metrics:
                         reason = "changed"
-                    elif self._heartbeat_due(last_snapshot_at):
+                    elif metrics_to_persist:
                         reason = "heartbeat"
 
                     recorded_snapshot_at = None
                     if reason:
-                        self.db.insert_snapshot(snapshot, reason)
+                        self.db.persist_provider_event(
+                            snapshot,
+                            reason=reason,
+                            state_hash=state_hash,
+                            metrics_to_persist=metrics_to_persist,
+                        )
                         recorded_snapshot_at = snapshot.recorded_at
 
                     self.db.record_success(
                         config.provider,
-                        snapshot_hash=snapshot_hash,
+                        state_hash=state_hash,
                         summary=snapshot.summary,
                         recorded_snapshot_at=recorded_snapshot_at,
                     )
@@ -115,9 +130,51 @@ class UsageMonitorService:
         raw_value = settings.get("heartbeat_interval_seconds", str(DEFAULT_HEARTBEAT_INTERVAL_SECONDS))
         return max(300, int(raw_value))
 
-    def _heartbeat_due(self, last_snapshot_at: str | None) -> bool:
-        if not last_snapshot_at:
+    def _metric_heartbeat_due(self, recorded_at: str | None) -> bool:
+        if not recorded_at:
             return True
-        last_seen = datetime.fromisoformat(last_snapshot_at)
+        last_seen = datetime.fromisoformat(recorded_at)
         elapsed = datetime.now(timezone.utc) - last_seen
         return elapsed.total_seconds() >= self._heartbeat_interval_seconds()
+
+    def _metrics_to_persist(
+        self,
+        metrics: list[UsageMetric],
+        current_metrics: dict[str, dict[str, Any]],
+    ) -> list[UsageMetric]:
+        metrics_to_persist: list[UsageMetric] = []
+        for metric in metrics:
+            previous = current_metrics.get(metric.key)
+            if previous is None:
+                metrics_to_persist.append(metric)
+                continue
+            if self._metric_changed(metric, previous):
+                metrics_to_persist.append(metric)
+                continue
+            if self._metric_heartbeat_due(previous.get("recorded_at")):
+                metrics_to_persist.append(metric)
+        return metrics_to_persist
+
+    def _metric_changed(self, metric: UsageMetric, previous: dict[str, Any]) -> bool:
+        previous_payload = {
+            "metric_key": previous.get("metric_key"),
+            "label": previous.get("label"),
+            "unit": previous.get("unit"),
+            "window_ends_at": previous.get("window_ends_at"),
+            "percent_value": previous.get("percent_value"),
+            "used_value": previous.get("used_value"),
+            "limit_value": previous.get("limit_value"),
+            "stable_extra": self._normalize_extra(previous.get("stable_extra")),
+        }
+        return metric.canonical_value() != previous_payload
+
+    def _normalize_extra(self, value: Any) -> dict[str, Any]:
+        if isinstance(value, dict):
+            return value
+        if isinstance(value, str) and value:
+            try:
+                parsed = json.loads(value)
+            except json.JSONDecodeError:
+                return {}
+            return parsed if isinstance(parsed, dict) else {}
+        return {}

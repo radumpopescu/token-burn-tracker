@@ -312,6 +312,13 @@
         if (!d || Number.isNaN(d.getTime())) return null;
         return d.getTime();
     }
+    function extendPointsToNow(points, xMax) {
+        if (!points.length) return points;
+        const syntheticX = xMax || Date.now();
+        const lastPoint = points[points.length - 1];
+        if (syntheticX <= lastPoint.x) return points;
+        return [...points, { x: syntheticX, y: lastPoint.y, synthetic: true }];
+    }
     function fmtRelative(v) {
         const d = safeDate(v);
         if (!d || Number.isNaN(d.getTime())) return "";
@@ -577,9 +584,10 @@
             .map((s, i) => {
                 const datasetKey = `${s.provider}:${s.metric_key}`;
                 const group = seriesGroupMeta[datasetKey] || classifyMetric(s.provider, s.label, null);
-                const points = s.points
+                const realPoints = s.points
                     .map(p => ({ x: chartTimeValue(p.recorded_at), y: metricPointValue(p) }))
                     .filter(p => p.x !== null && p.y !== null);
+                const points = extendPointsToNow(realPoints, xMax);
                 return {
                     key: datasetKey,
                     label: `${s.provider.toUpperCase()} \u00b7 ${metricLabels[s.metric_key] || s.label}`,
@@ -593,7 +601,11 @@
                     groupSubtitle: group.subtitle,
                     tension: 0.28,
                     fill: false,
-                    pointRadius: points.length === 1 ? 4 : 2.5,
+                    pointRadius: ctx => {
+                        const point = ctx.raw || {};
+                        if (point.synthetic) return 0;
+                        return realPoints.length === 1 ? 4 : 2.5;
+                    },
                     pointHoverRadius: 4,
                     spanGaps: true,
                     hidden: hiddenSeriesKeys.has(datasetKey)

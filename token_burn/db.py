@@ -9,7 +9,7 @@ from pathlib import Path
 import sqlite3
 from typing import Any
 
-from .models import ProviderConfig, UsageSnapshot
+from .models import ProviderConfig, UsageMetric, UsageSnapshot
 from .providers import provider_choices
 
 DB_SENTINEL = object()
@@ -85,24 +85,46 @@ class Database:
                 CREATE INDEX IF NOT EXISTS idx_snapshots_provider_recorded_at
                     ON snapshots(provider, recorded_at);
 
-                CREATE TABLE IF NOT EXISTS snapshot_metrics (
+                CREATE TABLE IF NOT EXISTS metric_samples (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    snapshot_id INTEGER NOT NULL REFERENCES snapshots(id) ON DELETE CASCADE,
+                    event_id INTEGER REFERENCES snapshots(id) ON DELETE CASCADE,
                     provider TEXT NOT NULL,
                     metric_key TEXT NOT NULL,
                     label TEXT NOT NULL,
+                    window_ends_at TEXT,
+                    recorded_at TEXT NOT NULL,
+                    reason TEXT NOT NULL,
                     percent_value REAL,
                     used_value REAL,
                     limit_value REAL,
                     unit TEXT,
-                    resets_at TEXT,
-                    raw_value TEXT,
-                    extra_json TEXT NOT NULL DEFAULT '{}'
+                    stable_extra_json TEXT NOT NULL DEFAULT '{}'
                 );
-                CREATE INDEX IF NOT EXISTS idx_snapshot_metrics_provider_key
-                    ON snapshot_metrics(provider, metric_key);
-                CREATE INDEX IF NOT EXISTS idx_snapshot_metrics_snapshot_id
-                    ON snapshot_metrics(snapshot_id);
+                CREATE INDEX IF NOT EXISTS idx_metric_samples_provider_key_recorded_at
+                    ON metric_samples(provider, metric_key, recorded_at);
+                CREATE INDEX IF NOT EXISTS idx_metric_samples_provider_recorded_at
+                    ON metric_samples(provider, recorded_at);
+                CREATE INDEX IF NOT EXISTS idx_metric_samples_provider_key_window_recorded_at
+                    ON metric_samples(provider, metric_key, window_ends_at, recorded_at);
+                CREATE INDEX IF NOT EXISTS idx_metric_samples_event_id
+                    ON metric_samples(event_id);
+
+                CREATE TABLE IF NOT EXISTS current_metrics (
+                    provider TEXT NOT NULL,
+                    metric_key TEXT NOT NULL,
+                    label TEXT NOT NULL,
+                    window_ends_at TEXT,
+                    recorded_at TEXT NOT NULL,
+                    percent_value REAL,
+                    used_value REAL,
+                    limit_value REAL,
+                    unit TEXT,
+                    stable_extra_json TEXT NOT NULL DEFAULT '{}',
+                    event_id INTEGER REFERENCES snapshots(id) ON DELETE SET NULL,
+                    PRIMARY KEY (provider, metric_key)
+                );
+                CREATE INDEX IF NOT EXISTS idx_current_metrics_provider_recorded_at
+                    ON current_metrics(provider, recorded_at);
                 """
             )
 
@@ -172,9 +194,27 @@ class Database:
     def list_distinct_metrics(self) -> list[dict[str, str]]:
         with self.connect() as conn:
             rows = conn.execute(
-                "SELECT DISTINCT provider, metric_key, label FROM snapshot_metrics ORDER BY provider, metric_key"
+                """
+                SELECT provider, metric_key, label, recorded_at
+                FROM current_metrics
+                UNION ALL
+                SELECT provider, metric_key, label, recorded_at
+                FROM metric_samples
+                ORDER BY provider, metric_key, recorded_at DESC
+                """
             ).fetchall()
-        return [{"provider": r["provider"], "key": r["metric_key"], "label": r["label"]} for r in rows]
+        metrics: dict[tuple[str, str], dict[str, str]] = {}
+        for row in rows:
+            key = (row["provider"], row["metric_key"])
+            metrics.setdefault(
+                key,
+                {
+                    "provider": row["provider"],
+                    "key": row["metric_key"],
+                    "label": row["label"],
+                },
+            )
+        return list(metrics.values())
 
     def list_provider_configs(self) -> list[ProviderConfig]:
         with self.connect() as conn:
@@ -245,11 +285,43 @@ class Database:
             rows = conn.execute("SELECT * FROM provider_state ORDER BY provider").fetchall()
         return {row["provider"]: dict(row) for row in rows}
 
+    def get_latest_snapshot(self, provider: str) -> dict[str, Any] | None:
+        with self.connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM snapshots WHERE provider = ? ORDER BY id DESC LIMIT 1",
+                (provider,),
+            ).fetchone()
+        return dict(row) if row else None
+
+    def get_current_metrics(self, provider: str) -> dict[str, dict[str, Any]]:
+        with self.connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT provider, metric_key, label, window_ends_at, recorded_at,
+                       percent_value, used_value, limit_value, unit, stable_extra_json
+                FROM current_metrics
+                WHERE provider = ?
+                ORDER BY metric_key
+                """,
+                (provider,),
+            ).fetchall()
+        return {
+            row["metric_key"]: {
+                **{
+                    key: value
+                    for key, value in dict(row).items()
+                    if key != "stable_extra_json"
+                },
+                "stable_extra": json.loads(row["stable_extra_json"] or "{}"),
+            }
+            for row in rows
+        }
+
     def record_success(
         self,
         provider: str,
         *,
-        snapshot_hash: str,
+        state_hash: str,
         summary: str,
         recorded_snapshot_at: str | None,
     ) -> None:
@@ -282,7 +354,7 @@ class Database:
                     _utcnow(),
                     _utcnow(),
                     recorded_snapshot_at,
-                    snapshot_hash,
+                    state_hash,
                     summary,
                     _utcnow(),
                 ),
@@ -308,69 +380,28 @@ class Database:
                 (provider, _utcnow(), error[:500], _utcnow()),
             )
 
-    def insert_snapshot(self, snapshot: UsageSnapshot, reason: str) -> int:
+    def insert_snapshot(self, snapshot: UsageSnapshot, reason: str, state_hash: str) -> int:
         with self.connect() as conn:
-            cursor = conn.execute(
-                """
-                INSERT INTO snapshots (
-                    provider,
-                    recorded_at,
-                    reason,
-                    snapshot_hash,
-                    page_title,
-                    plan_name,
-                    summary,
-                    raw_text,
-                    normalized_json,
-                    capture_json
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    snapshot.provider,
-                    snapshot.recorded_at,
-                    reason,
-                    snapshot.snapshot_hash(),
-                    snapshot.page_title,
-                    snapshot.plan_name,
-                    snapshot.summary,
-                    snapshot.raw_text,
-                    snapshot.normalized_json(),
-                    snapshot.capture_json(),
-                ),
+            return self._insert_snapshot(conn, snapshot, reason, state_hash)
+
+    def persist_provider_event(
+        self,
+        snapshot: UsageSnapshot,
+        *,
+        reason: str,
+        state_hash: str,
+        metrics_to_persist: list[UsageMetric],
+    ) -> int:
+        with self.connect() as conn:
+            event_id = self._insert_snapshot(conn, snapshot, reason, state_hash)
+            self._upsert_current_metrics(conn, snapshot.provider, snapshot.recorded_at, event_id, metrics_to_persist)
+            self._delete_missing_current_metrics(
+                conn,
+                snapshot.provider,
+                {metric.key for metric in snapshot.metrics},
             )
-            snapshot_id = int(cursor.lastrowid)
-            for metric in snapshot.metrics:
-                conn.execute(
-                    """
-                    INSERT INTO snapshot_metrics (
-                        snapshot_id,
-                        provider,
-                        metric_key,
-                        label,
-                        percent_value,
-                        used_value,
-                        limit_value,
-                        unit,
-                        resets_at,
-                        raw_value,
-                        extra_json
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        snapshot_id,
-                        snapshot.provider,
-                        metric.key,
-                        metric.label,
-                        metric.percent_value,
-                        metric.used_value,
-                        metric.limit_value,
-                        metric.unit,
-                        metric.resets_at,
-                        metric.raw_value,
-                        json.dumps(metric.extra, sort_keys=True),
-                    ),
-                )
-        return snapshot_id
+            self._insert_metric_samples(conn, snapshot.provider, snapshot.recorded_at, event_id, reason, metrics_to_persist)
+            return event_id
 
     def latest_snapshots_by_provider(self) -> dict[str, dict[str, Any]]:
         with self.connect() as conn:
@@ -388,12 +419,12 @@ class Database:
                 ORDER BY s.provider
                 """
             ).fetchall()
-            metrics = self._metrics_by_snapshot(conn, [row["id"] for row in rows])
+            metrics = self._current_metrics_by_provider(conn, [row["provider"] for row in rows])
 
         return {
             row["provider"]: {
                 **dict(row),
-                "metrics": metrics.get(row["id"], []),
+                "metrics": metrics.get(row["provider"], []),
             }
             for row in rows
         }
@@ -429,7 +460,7 @@ class Database:
 
         with self.connect() as conn:
             rows = conn.execute(query, params).fetchall()
-            metrics = self._metrics_by_snapshot(conn, [row["id"] for row in rows])
+            metrics = self._metrics_by_event(conn, [row["id"] for row in rows])
 
         return [
             {
@@ -449,29 +480,28 @@ class Database:
         where = ["1 = 1"]
         params: list[Any] = []
         if provider != "all":
-            where.append("sm.provider = ?")
+            where.append("ms.provider = ?")
             params.append(provider)
         if start_at:
-            where.append("s.recorded_at >= ?")
+            where.append("ms.recorded_at >= ?")
             params.append(start_at)
         if end_at:
-            where.append("s.recorded_at <= ?")
+            where.append("ms.recorded_at <= ?")
             params.append(end_at)
 
         query = f"""
             SELECT
-                sm.provider,
-                sm.metric_key,
-                sm.label,
-                s.recorded_at,
-                sm.percent_value,
-                sm.used_value,
-                sm.limit_value,
-                sm.unit
-            FROM snapshot_metrics sm
-            JOIN snapshots s ON s.id = sm.snapshot_id
+                ms.provider,
+                ms.metric_key,
+                ms.label,
+                ms.recorded_at,
+                ms.percent_value,
+                ms.used_value,
+                ms.limit_value,
+                ms.unit
+            FROM metric_samples ms
             WHERE {' AND '.join(where)}
-            ORDER BY sm.provider, sm.metric_key, s.recorded_at
+            ORDER BY ms.provider, ms.metric_key, ms.recorded_at
         """
 
         with self.connect() as conn:
@@ -490,6 +520,7 @@ class Database:
                     "points": [],
                 },
             )
+            series["label"] = row["label"]
             series["points"].append(
                 {
                     "recorded_at": row["recorded_at"],
@@ -539,28 +570,203 @@ class Database:
             row = conn.execute("SELECT * FROM provider_state WHERE provider = ?", (provider,)).fetchone()
         return dict(row) if row else None
 
-    def _metrics_by_snapshot(
-        self, conn: sqlite3.Connection, snapshot_ids: list[int]
-    ) -> dict[int, list[dict[str, Any]]]:
-        if not snapshot_ids:
+    def _insert_snapshot(
+        self,
+        conn: sqlite3.Connection,
+        snapshot: UsageSnapshot,
+        reason: str,
+        state_hash: str,
+    ) -> int:
+        cursor = conn.execute(
+            """
+            INSERT INTO snapshots (
+                provider,
+                recorded_at,
+                reason,
+                snapshot_hash,
+                page_title,
+                plan_name,
+                summary,
+                raw_text,
+                normalized_json,
+                capture_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                snapshot.provider,
+                snapshot.recorded_at,
+                reason,
+                state_hash,
+                snapshot.page_title,
+                snapshot.plan_name,
+                snapshot.summary,
+                snapshot.raw_text,
+                snapshot.normalized_json(),
+                snapshot.capture_json(),
+            ),
+        )
+        return int(cursor.lastrowid)
+
+    def _insert_metric_samples(
+        self,
+        conn: sqlite3.Connection,
+        provider: str,
+        recorded_at: str,
+        event_id: int,
+        reason: str,
+        metrics: list[UsageMetric],
+    ) -> None:
+        for metric in metrics:
+            conn.execute(
+                """
+                INSERT INTO metric_samples (
+                    event_id,
+                    provider,
+                    metric_key,
+                    label,
+                    window_ends_at,
+                    recorded_at,
+                    reason,
+                    percent_value,
+                    used_value,
+                    limit_value,
+                    unit,
+                    stable_extra_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    event_id,
+                    provider,
+                    metric.key,
+                    metric.label,
+                    metric.window_ends_at,
+                    recorded_at,
+                    reason,
+                    metric.percent_value,
+                    metric.used_value,
+                    metric.limit_value,
+                    metric.unit,
+                    json.dumps(metric.stable_extra(), sort_keys=True),
+                ),
+            )
+
+    def _upsert_current_metrics(
+        self,
+        conn: sqlite3.Connection,
+        provider: str,
+        recorded_at: str,
+        event_id: int,
+        metrics: list[UsageMetric],
+    ) -> None:
+        for metric in metrics:
+            conn.execute(
+                """
+                INSERT INTO current_metrics (
+                    provider,
+                    metric_key,
+                    label,
+                    window_ends_at,
+                    recorded_at,
+                    percent_value,
+                    used_value,
+                    limit_value,
+                    unit,
+                    stable_extra_json,
+                    event_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(provider, metric_key) DO UPDATE SET
+                    label=excluded.label,
+                    window_ends_at=excluded.window_ends_at,
+                    recorded_at=excluded.recorded_at,
+                    percent_value=excluded.percent_value,
+                    used_value=excluded.used_value,
+                    limit_value=excluded.limit_value,
+                    unit=excluded.unit,
+                    stable_extra_json=excluded.stable_extra_json,
+                    event_id=excluded.event_id
+                """,
+                (
+                    provider,
+                    metric.key,
+                    metric.label,
+                    metric.window_ends_at,
+                    recorded_at,
+                    metric.percent_value,
+                    metric.used_value,
+                    metric.limit_value,
+                    metric.unit,
+                    json.dumps(metric.stable_extra(), sort_keys=True),
+                    event_id,
+                ),
+            )
+
+    def _delete_missing_current_metrics(
+        self,
+        conn: sqlite3.Connection,
+        provider: str,
+        current_metric_keys: set[str],
+    ) -> None:
+        if current_metric_keys:
+            placeholders = ",".join("?" for _ in current_metric_keys)
+            conn.execute(
+                f"""
+                DELETE FROM current_metrics
+                WHERE provider = ?
+                  AND metric_key NOT IN ({placeholders})
+                """,
+                [provider, *sorted(current_metric_keys)],
+            )
+            return
+        conn.execute("DELETE FROM current_metrics WHERE provider = ?", (provider,))
+
+    def _current_metrics_by_provider(
+        self, conn: sqlite3.Connection, providers: list[str]
+    ) -> dict[str, list[dict[str, Any]]]:
+        if not providers:
             return {}
-        placeholders = ",".join("?" for _ in snapshot_ids)
+        placeholders = ",".join("?" for _ in providers)
         rows = conn.execute(
             f"""
-            SELECT snapshot_id, provider, metric_key, label, percent_value, used_value,
-                   limit_value, unit, resets_at, raw_value, extra_json
-            FROM snapshot_metrics
-            WHERE snapshot_id IN ({placeholders})
-            ORDER BY id
+            SELECT provider, metric_key, label, percent_value, used_value,
+                   limit_value, unit, window_ends_at, stable_extra_json
+            FROM current_metrics
+            WHERE provider IN ({placeholders})
+            ORDER BY provider, metric_key
             """,
-            snapshot_ids,
+            providers,
         ).fetchall()
 
-        grouped: dict[int, list[dict[str, Any]]] = {snapshot_id: [] for snapshot_id in snapshot_ids}
+        grouped: dict[str, list[dict[str, Any]]] = {provider: [] for provider in providers}
         for row in rows:
             item = dict(row)
-            item["extra"] = json.loads(item.pop("extra_json") or "{}")
-            grouped[row["snapshot_id"]].append(item)
+            item["resets_at"] = item.pop("window_ends_at")
+            item["extra"] = json.loads(item.pop("stable_extra_json") or "{}")
+            grouped[row["provider"]].append(item)
+        return grouped
+
+    def _metrics_by_event(
+        self, conn: sqlite3.Connection, event_ids: list[int]
+    ) -> dict[int, list[dict[str, Any]]]:
+        if not event_ids:
+            return {}
+        placeholders = ",".join("?" for _ in event_ids)
+        rows = conn.execute(
+            f"""
+            SELECT event_id, provider, metric_key, label, percent_value, used_value,
+                   limit_value, unit, window_ends_at, stable_extra_json
+            FROM metric_samples
+            WHERE event_id IN ({placeholders})
+            ORDER BY id
+            """,
+            event_ids,
+        ).fetchall()
+
+        grouped: dict[int, list[dict[str, Any]]] = {event_id: [] for event_id in event_ids}
+        for row in rows:
+            item = dict(row)
+            item["resets_at"] = item.pop("window_ends_at")
+            item["extra"] = json.loads(item.pop("stable_extra_json") or "{}")
+            grouped[row["event_id"]].append(item)
         return grouped
 
 
