@@ -228,6 +228,28 @@
             </div>
         </div>
 
+        <div class="section open">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2>Dashboard layout</h2>
+                <span class="section-chevron">&#9660;</span>
+            </div>
+            <div class="section-body">
+                <form action="/settings/layout" method="post">
+                    <div class="fields">
+                        <div class="field">
+                            <label for="dashboard_top_provider">Top provider on dashboard</label>
+                            <select id="dashboard_top_provider" name="dashboard_top_provider">
+                                {% for spec in provider_specs %}
+                                <option value="{{ spec.provider }}" {% if dashboard_top_provider == spec.provider %}selected{% endif %}>{{ spec.display_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="actions"><button type="submit">Save layout</button></div>
+                </form>
+            </div>
+        </div>
+
         <!-- Provider sections -->
         <div class="provider-grid">
         {% for spec in provider_specs %}

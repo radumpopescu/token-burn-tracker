@@ -77,6 +77,72 @@
             background: linear-gradient(135deg, var(--accent), #ff9a3d);
             border-color: rgba(255,122,24,0.55); color: #180d03; font-weight: 700;
         }
+        .provider-sections {
+            display: grid; gap: 18px;
+        }
+        .provider-dashboard {
+            padding: 16px;
+        }
+        .provider-dashboard-header {
+            display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 14px;
+        }
+        .provider-dashboard-copy {
+            display: grid; gap: 4px;
+        }
+        .provider-status-card {
+            min-width: 320px; display: grid; gap: 8px; padding: 10px 12px; border-radius: 14px;
+            border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03);
+        }
+        .provider-status-card.has-error {
+            border-color: rgba(255,106,106,0.28);
+        }
+        .provider-status-top {
+            display: flex; align-items: center; gap: 8px;
+        }
+        .provider-status-spinner {
+            --refresh-progress: 0;
+            position: relative; width: 12px; height: 12px; flex-shrink: 0; border-radius: 50%;
+            background: conic-gradient(var(--provider-accent) calc(var(--refresh-progress) * 1%), rgba(255,255,255,0.12) 0);
+            animation: spin 1.2s linear infinite;
+        }
+        .provider-status-spinner::after {
+            content: ""; position: absolute; inset: 2px; border-radius: 50%; background: var(--panel);
+        }
+        .provider-status-updated {
+            font-size: 0.78rem; color: var(--text); font-weight: 600;
+        }
+        .provider-status-line {
+            font-size: 0.74rem; color: var(--muted);
+        }
+        .provider-status-controls {
+            display: flex; flex-wrap: wrap; gap: 6px;
+        }
+        .provider-mode-btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-height: 28px; padding: 0 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.04); color: var(--text); font-size: 0.72rem; cursor: pointer;
+        }
+        .provider-mode-btn.active {
+            background: var(--provider-accent); border-color: transparent; color: #07121f; font-weight: 700;
+        }
+        .provider-mode-btn:disabled {
+            opacity: 0.6; cursor: progress;
+        }
+        .provider-summary {
+            display: grid; gap: 12px; margin-bottom: 14px;
+        }
+        .provider-chart-header {
+            display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px;
+        }
+        .provider-chart-title {
+            display: grid; gap: 3px;
+        }
+        .provider-chart-title strong {
+            font-size: 0.88rem; letter-spacing: -0.01em;
+        }
+        .provider-chart-title span {
+            font-size: 0.72rem; color: var(--muted);
+        }
 
         /* Usage groups */
         #usage-container { margin-bottom: 14px; }
@@ -320,6 +386,8 @@
             .topbar { flex-direction: column; align-items: flex-start; }
             .topbar-left { flex-wrap: wrap; }
             .provider-columns { grid-template-columns: 1fr; }
+            .provider-dashboard-header { flex-direction: column; align-items: stretch; }
+            .provider-status-card { min-width: 0; width: 100%; }
             .usage-grid { grid-template-columns: 1fr; }
             .series-toggles { grid-template-columns: 1fr; }
             .status-pill { width: 100%; flex-wrap: wrap; }
@@ -337,52 +405,14 @@
             <a class="link-btn primary" href="/settings">Settings</a>
         </section>
 
-        <div id="usage-container">
+        <div id="provider-sections" class="provider-sections">
             <div class="no-data-msg">Loading usage data...</div>
         </div>
-
-        <section class="chart-section">
-            <div class="series-group-header">
-                <div class="series-group-title">
-                    <strong>5h windows</strong>
-                    <span>Primary and short-session limits</span>
-                </div>
-                <button type="button" class="series-group-toggle" id="session-group-toggle" onclick="toggleGroup('session')">Hide all</button>
-            </div>
-            <div class="period-toggles" id="session-period-toggles"></div>
-            <div class="series-group-chips" id="session-series-toggles"></div>
-            <div class="chart-wrap">
-                <div id="session-chart"></div>
-                <div class="no-data-msg" id="session-chart-empty" style="display:none;">No 5h window history yet.</div>
-            </div>
-        </section>
-
-        <section class="chart-section">
-            <div class="series-group-header">
-                <div class="series-group-title">
-                    <strong>7d windows</strong>
-                    <span>Secondary and weekly limits</span>
-                </div>
-                <button type="button" class="series-group-toggle" id="weekly-group-toggle" onclick="toggleGroup('weekly')">Hide all</button>
-            </div>
-            <div class="period-toggles" id="weekly-period-toggles"></div>
-            <div class="series-group-chips" id="weekly-series-toggles"></div>
-            <div class="chart-wrap">
-                <div id="weekly-chart"></div>
-                <div class="no-data-msg" id="weekly-chart-empty" style="display:none;">No 7d window history yet.</div>
-            </div>
-        </section>
-    </div>
-    <div class="status-dock">
-        <span class="status-pill" id="refresh-status-pill" aria-live="polite">
-            <span class="status-spinner" id="refresh-spinner" aria-hidden="true"></span>
-            <span class="status-copy" id="last-updated-label">Loading latest status...</span>
-            <span class="status-sep" aria-hidden="true"></span>
-            <span class="status-copy" id="next-refresh-label">Scheduling refresh...</span>
-        </span>
     </div>
 
     <script>
+    (function () {
+    if (false) {
     const providerColorPalettes = {
         claude: ["#ff7a18", "#ff9a3d", "#ffb86b", "#ffd089"],
         codex: ["#31c4ff", "#5ed2ff", "#8edfff", "#b7ecff"],
@@ -1245,6 +1275,908 @@
     renderAllPeriodChips();
     startRefreshTicker();
     updateRefreshStatus();
+    loadData(true);
+    }
+    })();
+    </script>
+    <script>
+    const providerColorPalettes = {
+        claude: ["#ff7a18", "#ff9a3d", "#ffb86b", "#ffd089"],
+        codex: ["#31c4ff", "#5ed2ff", "#8edfff", "#b7ecff"],
+        default: ["#7ce38b", "#b8f2e6", "#c38cff", "#ffd166"],
+    };
+    const dashboardStorageKey = "token-burn.dashboard.preferences.v6";
+    const providerPeriodOptions = [
+        { value: "1h", label: "1h" },
+        { value: "5h", label: "5h" },
+        { value: "24h", label: "24h" },
+        { value: "7d", label: "7d" },
+        { value: "30d", label: "30d" },
+        { value: "90d", label: "90d" },
+    ];
+    const fallbackRefreshSeconds = 30;
+    const refreshBufferMs = 3000;
+    const chartStepMs = 60 * 1000;
+    let providerOrder = {{ provider_order|tojson }};
+    let providerCharts = {};
+    let providerDatasets = {};
+    let providerPeriods = {};
+    let hiddenSeriesKeys = new Set();
+    let hiddenUsageKeys = new Set();
+    let activeLoadToken = 0;
+    let refreshTimeoutId = null;
+    let refreshTickerId = null;
+    let nextRefreshAt = null;
+    let pendingBackendRefreshRetry = false;
+    let pendingBackendRefreshRetries = 0;
+    let currentRangeEndAt = null;
+    let latestRefreshError = "";
+    let latestUsage = {};
+    let latestStates = {};
+    let latestSeries = [];
+    let metricLabels = {};
+    let refreshModeRequests = new Set();
+
+    function getStoredDashboardPreferences() {
+        try {
+            const raw = window.localStorage.getItem(dashboardStorageKey);
+            if (!raw) return {};
+            const parsed = JSON.parse(raw);
+            return parsed && typeof parsed === "object" ? parsed : {};
+        } catch {
+            return {};
+        }
+    }
+
+    function saveDashboardPreferences() {
+        try {
+            window.localStorage.setItem(dashboardStorageKey, JSON.stringify({
+                providerPeriods,
+                hiddenSeriesKeys: Array.from(hiddenSeriesKeys),
+                hiddenUsageKeys: Array.from(hiddenUsageKeys),
+            }));
+        } catch {}
+    }
+
+    function normalizeProviderPeriod(period) {
+        return providerPeriodOptions.some((option) => option.value === period) ? period : null;
+    }
+
+    function applyStoredDashboardPreferences() {
+        const stored = getStoredDashboardPreferences();
+        if (stored.providerPeriods && typeof stored.providerPeriods === "object") {
+            Object.entries(stored.providerPeriods).forEach(([provider, period]) => {
+                const normalized = normalizeProviderPeriod(period);
+                if (normalized) providerPeriods[provider] = normalized;
+            });
+        }
+        if (Array.isArray(stored.hiddenSeriesKeys)) {
+            hiddenSeriesKeys = new Set(stored.hiddenSeriesKeys.filter((value) => typeof value === "string"));
+        }
+        if (Array.isArray(stored.hiddenUsageKeys)) {
+            hiddenUsageKeys = new Set(stored.hiddenUsageKeys.filter((value) => typeof value === "string"));
+        }
+    }
+
+    function providerPeriod(provider) {
+        if (!providerPeriods[provider]) providerPeriods[provider] = "7d";
+        return providerPeriods[provider];
+    }
+
+    function chartPeriodToRangeMs(period) {
+        switch (period) {
+            case "1h": return 60 * 60 * 1000;
+            case "5h": return 5 * 60 * 60 * 1000;
+            case "24h": return 24 * 60 * 60 * 1000;
+            case "7d": return 7 * 24 * 60 * 60 * 1000;
+            case "30d": return 30 * 24 * 60 * 60 * 1000;
+            case "90d": return 90 * 24 * 60 * 60 * 1000;
+            default: return 7 * 24 * 60 * 60 * 1000;
+        }
+    }
+
+    function chartPeriodToBackendPeriod(period) {
+        if (period === "1h") return "1h";
+        if (period === "5h" || period === "24h") return "24h";
+        return period;
+    }
+
+    function requestedBackendPeriod() {
+        const order = ["1h", "24h", "7d", "30d", "90d"];
+        const requested = providerOrder
+            .map((provider) => chartPeriodToBackendPeriod(providerPeriod(provider)))
+            .sort((a, b) => order.indexOf(a) - order.indexOf(b));
+        return requested.length ? requested[requested.length - 1] : "7d";
+    }
+
+    function buildQuery() {
+        const params = new URLSearchParams();
+        params.set("provider", "all");
+        params.set("period", requestedBackendPeriod());
+        return params.toString();
+    }
+
+    function safeDate(value) {
+        return value ? new Date(value) : null;
+    }
+
+    function chartTimeValue(value) {
+        const date = safeDate(value);
+        if (!date || Number.isNaN(date.getTime())) return null;
+        return date.getTime();
+    }
+
+    function fmtRelative(value) {
+        const date = safeDate(value);
+        if (!date || Number.isNaN(date.getTime())) return "";
+        const seconds = Math.round((date.getTime() - Date.now()) / 1000);
+        const abs = Math.abs(seconds);
+        if (abs < 60) return seconds >= 0 ? "in under a minute" : "just now";
+        const ranges = [["day", 86400], ["hour", 3600], ["minute", 60]];
+        const formatter = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+        for (const [unit, size] of ranges) {
+            if (abs >= size || unit === "minute") return formatter.format(Math.round(seconds / size), unit);
+        }
+        return "";
+    }
+
+    function fmtDuration(value) {
+        const date = safeDate(value);
+        if (!date || Number.isNaN(date.getTime())) return "";
+        const abs = Math.abs(Math.round((date.getTime() - Date.now()) / 1000));
+        if (abs < 60) return "< 1 min";
+        if (abs < 3600) return `${Math.round(abs / 60)} min`;
+        const hours = Math.floor(abs / 3600);
+        const minutes = Math.round((abs % 3600) / 60);
+        return minutes > 0 ? `${hours} hr ${minutes} min` : `${hours} hr`;
+    }
+
+    function fmtShortDuration(totalSeconds) {
+        const seconds = Math.max(0, Math.round(totalSeconds));
+        if (seconds < 60) return `${seconds}s`;
+        if (seconds < 3600) {
+            const minutes = Math.floor(seconds / 60);
+            const remainder = seconds % 60;
+            return minutes < 10 && remainder ? `${minutes}m ${remainder}s` : `${minutes}m`;
+        }
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        return minutes ? `${hours}h ${minutes}m` : `${hours}h`;
+    }
+
+    function fmtElapsedFromNow(value) {
+        const date = safeDate(value);
+        if (!date || Number.isNaN(date.getTime())) return "Waiting for first update";
+        const elapsedSeconds = Math.max(0, Math.round((Date.now() - date.getTime()) / 1000));
+        if (elapsedSeconds < 5) return "Updated just now";
+        return `Updated ${fmtShortDuration(elapsedSeconds)} ago`;
+    }
+
+    function providerDisplayName(provider) {
+        return provider === "claude" ? "Claude" : provider === "codex" ? "Codex" : String(provider || "").toUpperCase();
+    }
+
+    function providerRefreshMode(state) {
+        const mode = String((state && state.refresh_mode) || "auto");
+        return ["auto", "1m", "10m"].includes(mode) ? mode : "auto";
+    }
+
+    function providerIntervalSeconds(state) {
+        const mode = providerRefreshMode(state);
+        if (mode === "1m") return 60;
+        if (mode === "10m") return 600;
+        return Math.max(60, Number((state && state.current_poll_interval_seconds) || 60));
+    }
+
+    function providerModeLabel(state) {
+        const mode = providerRefreshMode(state);
+        const interval = providerIntervalSeconds(state);
+        if (mode === "auto") return `Auto · ${fmtShortDuration(interval)} cadence`;
+        return `${fmtShortDuration(interval)} fixed`;
+    }
+
+    function earliestProviderCheck(states) {
+        return Object.values(states || {})
+            .map((state) => safeDate(state && state.next_check_at))
+            .filter((date) => date && !Number.isNaN(date.getTime()))
+            .sort((a, b) => a.getTime() - b.getTime())[0] || null;
+    }
+
+    function providersAdvanced(previousStates, nextStates) {
+        return providerOrder.some((provider) => {
+            const previous = chartTimeValue(previousStates[provider] && previousStates[provider].last_checked_at);
+            const next = chartTimeValue(nextStates[provider] && nextStates[provider].last_checked_at);
+            return next !== null && (previous === null || next > previous);
+        });
+    }
+
+    function updateProviderStatusDisplays() {
+        providerOrder.forEach((provider) => {
+            const root = document.querySelector(`[data-provider-status="${provider}"]`);
+            if (!root) return;
+            const state = latestStates[provider] || {};
+            const spinner = root.querySelector(".provider-status-spinner");
+            const updated = root.querySelector(".provider-status-updated");
+            const next = root.querySelector(".provider-status-next");
+            const mode = root.querySelector(".provider-status-mode");
+            const lastCheckedAt = safeDate(state.last_checked_at);
+            const nextCheckAt = safeDate(state.next_check_at);
+            let progress = 0;
+            if (lastCheckedAt && nextCheckAt) {
+                const total = Math.max(1000, nextCheckAt.getTime() - lastCheckedAt.getTime());
+                progress = Math.max(0, Math.min(100, ((Date.now() - lastCheckedAt.getTime()) / total) * 100));
+            }
+            root.classList.toggle("has-error", Boolean(state.last_error));
+            spinner.style.setProperty("--refresh-progress", progress.toFixed(1));
+            updated.textContent = state.last_error
+                ? `Error: ${state.last_error}`
+                : fmtElapsedFromNow(state.last_success_at || state.last_checked_at);
+            if (refreshModeRequests.has(provider)) {
+                next.textContent = "Updating refresh mode...";
+            } else if (!nextCheckAt) {
+                next.textContent = latestRefreshError || "Scheduling next check...";
+            } else {
+                const remainingSeconds = Math.max(0, Math.ceil((nextCheckAt.getTime() - Date.now()) / 1000));
+                next.textContent = remainingSeconds <= 1
+                    ? "Next backend check now"
+                    : `Next backend check in ${fmtShortDuration(remainingSeconds)}`;
+            }
+            mode.textContent = providerModeLabel(state);
+            root.querySelectorAll("[data-refresh-mode]").forEach((button) => {
+                button.classList.toggle("active", providerRefreshMode(state) === button.dataset.refreshMode);
+                button.disabled = refreshModeRequests.has(provider);
+            });
+        });
+    }
+
+    function startRefreshTicker() {
+        if (refreshTickerId !== null) clearInterval(refreshTickerId);
+        refreshTickerId = window.setInterval(updateProviderStatusDisplays, 1000);
+    }
+
+    function scheduleNextRefresh() {
+        if (refreshTimeoutId !== null) clearTimeout(refreshTimeoutId);
+        const earliestCheck = earliestProviderCheck(latestStates);
+        if (pendingBackendRefreshRetry) {
+            nextRefreshAt = Date.now() + Math.min(5000, Math.max(1500, refreshBufferMs));
+        } else if (earliestCheck) {
+            nextRefreshAt = Math.max(Date.now() + 1000, earliestCheck.getTime() + refreshBufferMs);
+        } else {
+            nextRefreshAt = Date.now() + fallbackRefreshSeconds * 1000;
+        }
+        refreshTimeoutId = window.setTimeout(() => loadData(false), Math.max(1000, nextRefreshAt - Date.now()));
+        updateProviderStatusDisplays();
+    }
+
+    function barClass(pct) {
+        return pct >= 80 ? "high" : pct >= 50 ? "mid" : "low";
+    }
+
+    function metricPointValue(point) {
+        if (point.percent_value !== null && point.percent_value !== undefined) return point.percent_value;
+        if (point.used_value !== null && point.used_value !== undefined) return point.used_value;
+        return null;
+    }
+
+    function classifyMetric(provider, metricKey, label, resetsAt) {
+        const key = String(metricKey || "").toLowerCase();
+        const lowerLabel = String(label || "").toLowerCase();
+        if (resetsAt) {
+            const resetDate = safeDate(resetsAt);
+            if (resetDate && !Number.isNaN(resetDate.getTime())) {
+                const hoursUntilReset = (resetDate.getTime() - Date.now()) / 3600000;
+                if (hoursUntilReset <= 24) return { group: "session", order: 0, title: "Current session" };
+                return { group: "weekly", order: 1, title: "7d and longer windows" };
+            }
+        }
+        if (key.includes("five_hour") || key.includes("primary") || lowerLabel.includes("5 hour") || lowerLabel.includes("primary")) {
+            return { group: "session", order: 0, title: "Current session" };
+        }
+        if (key.includes("seven_day") || key.includes("secondary") || lowerLabel.includes("7 day") || lowerLabel.includes("weekly") || lowerLabel.includes("secondary")) {
+            return { group: "weekly", order: 1, title: "7d and longer windows" };
+        }
+        if (lowerLabel.includes("extra") || lowerLabel.includes("credit") || lowerLabel.includes("monthly") || lowerLabel.includes("message")) {
+            return { group: "credits", order: 2, title: "Credits and extras" };
+        }
+        return { group: "other", order: 3, title: "Other" };
+    }
+
+    function minuteFloor(timestamp) {
+        return Math.floor(timestamp / chartStepMs) * chartStepMs;
+    }
+
+    function minuteCeil(timestamp) {
+        return Math.ceil(timestamp / chartStepMs) * chartStepMs;
+    }
+
+    function dedupePoints(points) {
+        const deduped = [];
+        points.forEach((point) => {
+            if (!deduped.length || deduped[deduped.length - 1].x !== point.x) deduped.push(point);
+            else deduped[deduped.length - 1] = point;
+        });
+        return deduped;
+    }
+
+    function densifySeriesPoints(points, startTs, endTs) {
+        if (!points.length || startTs >= endTs) return [];
+        const sorted = points
+            .slice()
+            .sort((a, b) => a.x - b.x)
+            .filter((point) => point.x <= endTs);
+        if (!sorted.length) return [];
+
+        let carry = null;
+        let pointIndex = 0;
+        let firstDenseTs = startTs;
+        while (pointIndex < sorted.length && sorted[pointIndex].x <= startTs) {
+            carry = sorted[pointIndex];
+            pointIndex += 1;
+        }
+        if (!carry) {
+            if (pointIndex >= sorted.length) return [];
+            carry = sorted[pointIndex];
+            firstDenseTs = carry.x;
+            pointIndex += 1;
+        }
+
+        const dense = [{ x: firstDenseTs, y: carry.y }];
+        for (let timestamp = minuteCeil(firstDenseTs); timestamp <= minuteFloor(endTs); timestamp += chartStepMs) {
+            while (pointIndex < sorted.length && sorted[pointIndex].x <= timestamp) {
+                carry = sorted[pointIndex];
+                pointIndex += 1;
+            }
+            dense.push({ x: timestamp, y: carry.y });
+        }
+        while (pointIndex < sorted.length && sorted[pointIndex].x <= endTs) {
+            carry = sorted[pointIndex];
+            pointIndex += 1;
+        }
+        dense.push({ x: endTs, y: carry.y });
+        return dedupePoints(dense);
+    }
+
+    function metricWindowSeconds(metric) {
+        const explicitWindow = Number(metric.extra && metric.extra.limit_window_seconds);
+        if (Number.isFinite(explicitWindow) && explicitWindow > 0) return explicitWindow;
+        const key = String(metric.metric_key || "").toLowerCase();
+        if (key.includes("five_hour") || key.includes("primary")) return 5 * 60 * 60;
+        if (key.includes("seven_day") || key.includes("secondary")) return 7 * 24 * 60 * 60;
+        return null;
+    }
+
+    function buildPaceInfo(metric) {
+        if (metric.pct === null || metric.pct === undefined || !metric.resets_at) return null;
+        const totalSeconds = metricWindowSeconds(metric);
+        const resetDate = safeDate(metric.resets_at);
+        if (!totalSeconds || !resetDate || Number.isNaN(resetDate.getTime())) return null;
+
+        const remainingSeconds = Math.max(0, Math.round((resetDate.getTime() - Date.now()) / 1000));
+        const elapsedSeconds = Math.max(0, totalSeconds - remainingSeconds);
+        const elapsedPct = Math.max(0, Math.min(100, (elapsedSeconds / totalSeconds) * 100));
+        const usedPct = Math.max(0, Math.min(100, metric.pct));
+        const projectedPct = elapsedPct > 0 ? (usedPct / elapsedPct) * 100 : null;
+        const paceDelta = usedPct - elapsedPct;
+        let summary = "Window just started";
+        if (projectedPct !== null && Number.isFinite(projectedPct)) {
+            summary = projectedPct >= 100
+                ? `At this pace you land around ${projectedPct.toFixed(0)}% by reset`
+                : `At this pace you finish around ${projectedPct.toFixed(0)}% by reset`;
+        }
+
+        let trendClass = "on-track";
+        let trendLabel = "On pace";
+        if (paceDelta >= 8) {
+            trendClass = "ahead";
+            trendLabel = `${paceDelta.toFixed(0)} pts above time pace`;
+        } else if (paceDelta <= -8) {
+            trendClass = "behind";
+            trendLabel = `${Math.abs(paceDelta).toFixed(0)} pts below time pace`;
+        }
+
+        return {
+            elapsedPct,
+            usedPct,
+            headline: `${elapsedPct.toFixed(0)}% of the window elapsed`,
+            detail: `${fmtShortDuration(remainingSeconds)} left`,
+            summary,
+            trendClass,
+            trendLabel,
+        };
+    }
+
+    function hideUsageMetric(metricKey) {
+        hiddenUsageKeys.add(metricKey);
+        hiddenSeriesKeys.add(metricKey);
+        saveDashboardPreferences();
+        renderProviderSections();
+    }
+
+    function hideProviderItems(provider) {
+        let changed = false;
+        ((latestUsage[provider] && latestUsage[provider].metrics) || []).forEach((metric) => {
+            const key = `${provider}:${metric.metric_key}`;
+            if (!hiddenUsageKeys.has(key)) {
+                hiddenUsageKeys.add(key);
+                hiddenSeriesKeys.add(key);
+                changed = true;
+            }
+        });
+        if (!changed) return;
+        saveDashboardPreferences();
+        renderProviderSections();
+    }
+
+    function showProviderItems(provider) {
+        let changed = false;
+        Array.from(hiddenUsageKeys).forEach((metricKey) => {
+            if (metricKey.startsWith(`${provider}:`)) {
+                hiddenUsageKeys.delete(metricKey);
+                hiddenSeriesKeys.delete(metricKey);
+                changed = true;
+            }
+        });
+        if (!changed) return;
+        saveDashboardPreferences();
+        renderProviderSections();
+    }
+
+    function renderProviderPeriodChips(provider) {
+        const container = document.getElementById(`provider-period-toggles-${provider}`);
+        if (!container) return;
+        container.innerHTML = providerPeriodOptions.map((option) => {
+            const active = providerPeriod(provider) === option.value ? "active" : "";
+            return `<span class="period-chip ${active}" onclick="setProviderPeriod('${provider}', '${option.value}')">${option.label}</span>`;
+        }).join("");
+    }
+
+    function setProviderPeriod(provider, period) {
+        const normalized = normalizeProviderPeriod(period);
+        if (!normalized || providerPeriod(provider) === normalized) return;
+        providerPeriods[provider] = normalized;
+        saveDashboardPreferences();
+        loadData(true);
+    }
+
+    function buildProviderSummary(provider) {
+        const snapshot = latestUsage[provider];
+        if (!snapshot || !Array.isArray(snapshot.metrics) || !snapshot.metrics.length) {
+            return '<div class="provider-panel-empty">No usage data yet for this provider. Add its request import in Settings to start tracking it.</div>';
+        }
+
+        const groups = {};
+        snapshot.metrics.forEach((metric) => {
+            let pct = metric.percent_value;
+            if ((pct === null || pct === undefined) && metric.used_value !== null && metric.limit_value) {
+                pct = (metric.used_value / metric.limit_value) * 100;
+            }
+            if (pct === null || pct === undefined || Number.isNaN(pct)) return;
+            const classification = classifyMetric(provider, metric.metric_key, metric.label, metric.resets_at);
+            const item = {
+                key: `${provider}:${metric.metric_key}`,
+                metric_key: metric.metric_key,
+                label: metricLabels[metric.metric_key] || metric.label,
+                pct: Math.max(0, Math.min(100, pct)),
+                resets_at: metric.resets_at,
+                used: metric.used_value,
+                limit: metric.limit_value,
+                unit: metric.unit,
+                extra: metric.extra || {},
+                ...classification,
+            };
+            const group = groups[item.group] || {
+                title: item.title,
+                order: item.order,
+                items: [],
+            };
+            group.items.push(item);
+            groups[item.group] = group;
+        });
+
+        const totalCount = Object.values(groups).reduce((count, group) => count + group.items.length, 0);
+        const hiddenCount = Object.values(groups).reduce(
+            (count, group) => count + group.items.filter((item) => hiddenUsageKeys.has(item.key)).length,
+            0,
+        );
+        const visibleCount = totalCount - hiddenCount;
+        const renderedGroups = Object.values(groups)
+            .sort((a, b) => a.order - b.order)
+            .map((group) => {
+                const visibleItems = group.items.filter((item) => !hiddenUsageKeys.has(item.key));
+                if (!visibleItems.length) return "";
+                const cards = visibleItems.map((item) => {
+                    const reset = item.resets_at ? `Resets ${fmtRelative(item.resets_at)} (${fmtDuration(item.resets_at)})` : "";
+                    const amount = (item.used !== null && item.used !== undefined && item.limit)
+                        ? `${Number.isInteger(item.used) ? item.used : item.used.toFixed(1)}/${Number.isInteger(item.limit) ? item.limit : item.limit.toFixed(1)}${item.unit && item.unit !== "percent" ? " " + item.unit : ""}`
+                        : "";
+                    const pace = buildPaceInfo(item);
+                    const paceBlock = pace ? `<div class="usage-item-pace">
+                        <div class="pace-trend ${pace.trendClass}">${pace.trendLabel}</div>
+                        <div class="pace-stats"><span>Used ${pace.usedPct.toFixed(0)}%</span><span>${pace.headline}</span></div>
+                        <div class="pace-line">
+                            <div class="pace-line-elapsed" style="width:${pace.elapsedPct.toFixed(1)}%"></div>
+                            <div class="pace-line-used" style="width:${pace.usedPct.toFixed(1)}%"></div>
+                        </div>
+                        <div class="pace-caption"><strong>${pace.summary}</strong><span>${pace.detail}</span></div>
+                    </div>` : "";
+                    return `<div class="usage-item">
+                        <div class="usage-item-header">
+                            <span class="usage-item-label">${item.label}</span>
+                            <div class="usage-item-actions">
+                                <button type="button" class="usage-item-hide" onclick='hideUsageMetric(${JSON.stringify(item.key)})'>Hide</button>
+                            </div>
+                        </div>
+                        <div class="usage-item-pct">${item.pct.toFixed(1)}% used</div>
+                        <div class="usage-bar-track"><div class="usage-bar-fill ${barClass(item.pct)}" style="width:${item.pct}%"></div></div>
+                        <div class="usage-item-footer"><span>${amount}</span><span>${reset}</span></div>
+                        ${paceBlock}
+                    </div>`;
+                }).join("");
+                return `<div class="usage-group">
+                    <h3 class="usage-group-title">${group.title}</h3>
+                    <div class="usage-grid">${cards}</div>
+                </div>`;
+            })
+            .filter(Boolean)
+            .join("");
+
+        return `<div class="provider-panel-actions">
+                ${visibleCount ? `<button type="button" class="provider-panel-btn" onclick="hideProviderItems('${provider}')">Hide all</button>` : ""}
+                ${hiddenCount ? `<button type="button" class="provider-panel-btn" onclick="showProviderItems('${provider}')">Show hidden (${hiddenCount})</button>` : ""}
+            </div>
+            <div class="provider-summary">
+                ${renderedGroups || '<div class="provider-panel-empty">Everything in this provider is hidden right now.</div>'}
+            </div>`;
+    }
+
+    function buildProviderSection(provider) {
+        const state = latestStates[provider] || {};
+        return `<section class="provider-panel provider-dashboard ${provider}">
+            <div class="provider-dashboard-header">
+                <div class="provider-dashboard-copy">
+                    <div class="provider-panel-kicker">Provider</div>
+                    <h2 class="provider-panel-title">${providerDisplayName(provider)}</h2>
+                    <p class="provider-panel-subtitle">Current session and 7d progress on top, history below.</p>
+                </div>
+                <div class="provider-status-card" data-provider-status="${provider}">
+                    <div class="provider-status-top">
+                        <span class="provider-status-spinner" aria-hidden="true"></span>
+                        <span class="provider-status-updated">${fmtElapsedFromNow(state.last_success_at || state.last_checked_at)}</span>
+                    </div>
+                    <div class="provider-status-line provider-status-next">Scheduling next check...</div>
+                    <div class="provider-status-line provider-status-mode">${providerModeLabel(state)}</div>
+                    <div class="provider-status-controls">
+                        <button type="button" class="provider-mode-btn" data-refresh-mode="auto" onclick="setProviderRefreshMode('${provider}', 'auto')">Auto</button>
+                        <button type="button" class="provider-mode-btn" data-refresh-mode="1m" onclick="setProviderRefreshMode('${provider}', '1m')">1m</button>
+                        <button type="button" class="provider-mode-btn" data-refresh-mode="10m" onclick="setProviderRefreshMode('${provider}', '10m')">10m</button>
+                    </div>
+                </div>
+            </div>
+            ${buildProviderSummary(provider)}
+            <section class="chart-section">
+                <div class="provider-chart-header">
+                    <div class="provider-chart-title">
+                        <strong>${providerDisplayName(provider)} history</strong>
+                        <span>Dense minute points keep hover tooltips complete between stored changes.</span>
+                    </div>
+                    <button type="button" class="series-group-toggle" id="provider-series-toggle-${provider}" onclick="toggleProviderSeries('${provider}')">Hide all</button>
+                </div>
+                <div class="period-toggles" id="provider-period-toggles-${provider}"></div>
+                <div class="series-group-chips" id="provider-series-toggles-${provider}"></div>
+                <div class="chart-wrap">
+                    <div id="provider-chart-${provider}"></div>
+                    <div class="no-data-msg" id="provider-chart-empty-${provider}" style="display:none;">No history yet for ${providerDisplayName(provider)}.</div>
+                </div>
+            </section>
+        </section>`;
+    }
+
+    function destroyAllCharts() {
+        Object.values(providerCharts).forEach((chart) => {
+            if (chart) chart.destroy();
+        });
+        providerCharts = {};
+    }
+
+    function renderProviderSections() {
+        destroyAllCharts();
+        const container = document.getElementById("provider-sections");
+        if (!providerOrder.length) {
+            container.innerHTML = '<div class="no-data-msg">No providers available.</div>';
+            return;
+        }
+        container.innerHTML = providerOrder.map(buildProviderSection).join("");
+        providerOrder.forEach(renderProviderPeriodChips);
+        renderProviderCharts();
+        updateProviderStatusDisplays();
+    }
+
+    function datasetsForProvider(provider) {
+        return providerDatasets[provider] || [];
+    }
+
+    function renderProviderSeriesChips(provider) {
+        const container = document.getElementById(`provider-series-toggles-${provider}`);
+        const toggleButton = document.getElementById(`provider-series-toggle-${provider}`);
+        if (!container || !toggleButton) return;
+        const datasets = datasetsForProvider(provider);
+        const visibleCount = datasets.filter((dataset) => !hiddenSeriesKeys.has(dataset.key)).length;
+        toggleButton.textContent = datasets.length && visibleCount === 0 ? "Show all" : "Hide all";
+        container.innerHTML = datasets.map((dataset) => {
+            const isOff = hiddenSeriesKeys.has(dataset.key);
+            return `<span class="series-chip ${isOff ? "off" : ""}" onclick='toggleSeries(${JSON.stringify(dataset.key)})'>
+                <span class="dot" style="background:${dataset.color}"></span>${dataset.displayLabel}
+            </span>`;
+        }).join("");
+    }
+
+    function renderAllSeriesChips() {
+        providerOrder.forEach(renderProviderSeriesChips);
+    }
+
+    function toggleSeries(key) {
+        if (hiddenSeriesKeys.has(key)) hiddenSeriesKeys.delete(key);
+        else hiddenSeriesKeys.add(key);
+        saveDashboardPreferences();
+        updateChartVisibility();
+        renderAllSeriesChips();
+    }
+
+    function toggleProviderSeries(provider) {
+        const datasets = datasetsForProvider(provider);
+        if (!datasets.length) return;
+        const shouldShowAll = datasets.every((dataset) => hiddenSeriesKeys.has(dataset.key));
+        datasets.forEach((dataset) => {
+            if (shouldShowAll) hiddenSeriesKeys.delete(dataset.key);
+            else hiddenSeriesKeys.add(dataset.key);
+        });
+        saveDashboardPreferences();
+        updateChartVisibility();
+        renderAllSeriesChips();
+    }
+
+    function updateChartVisibility() {
+        Object.entries(providerCharts).forEach(([provider, chart]) => {
+            if (!chart) return;
+            datasetsForProvider(provider).forEach((dataset) => {
+                if (hiddenSeriesKeys.has(dataset.key)) chart.hideSeries(dataset.chartLabel);
+                else chart.showSeries(dataset.chartLabel);
+            });
+        });
+    }
+
+    function hashString(value) {
+        let hash = 0;
+        const input = String(value || "");
+        for (let index = 0; index < input.length; index += 1) {
+            hash = ((hash << 5) - hash) + input.charCodeAt(index);
+            hash |= 0;
+        }
+        return Math.abs(hash);
+    }
+
+    function colorForSeries(provider, metricKey) {
+        const palette = providerColorPalettes[provider] || providerColorPalettes.default;
+        return palette[hashString(metricKey) % palette.length];
+    }
+
+    function buildProviderDatasets(series, rangeEndTs) {
+        const grouped = {};
+        series.forEach((item) => {
+            const provider = item.provider;
+            const rangeStartTs = rangeEndTs - chartPeriodToRangeMs(providerPeriod(provider));
+            const rawPoints = item.points
+                .map((point) => {
+                    const x = chartTimeValue(point.recorded_at);
+                    const y = metricPointValue(point);
+                    return x !== null && y !== null ? { x, y } : null;
+                })
+                .filter(Boolean);
+            const densePoints = densifySeriesPoints(rawPoints, rangeStartTs, rangeEndTs);
+            if (!densePoints.length) return;
+            const classification = classifyMetric(provider, item.metric_key, item.label, null);
+            grouped[provider] ||= [];
+            grouped[provider].push({
+                key: `${provider}:${item.metric_key}`,
+                chartLabel: `${providerDisplayName(provider)} · ${metricLabels[item.metric_key] || item.label}`,
+                displayLabel: metricLabels[item.metric_key] || item.label,
+                color: colorForSeries(provider, item.metric_key),
+                order: classification.order,
+                data: densePoints,
+            });
+        });
+        Object.values(grouped).forEach((datasets) => {
+            datasets.sort((a, b) => (a.order - b.order) || a.displayLabel.localeCompare(b.displayLabel));
+        });
+        return grouped;
+    }
+
+    function buildChartOptions(datasets, xMin, xMax) {
+        return {
+            series: datasets.map((dataset) => ({
+                name: dataset.chartLabel,
+                data: dataset.data,
+            })),
+            chart: {
+                type: "area",
+                height: 340,
+                background: "transparent",
+                fontFamily: "SF Pro Display, Segoe UI, system-ui, sans-serif",
+                foreColor: "#8ea6c4",
+                toolbar: {
+                    show: true,
+                    tools: {
+                        download: false,
+                        selection: false,
+                        zoom: true,
+                        zoomin: false,
+                        zoomout: false,
+                        pan: false,
+                        reset: true,
+                    },
+                },
+                zoom: { enabled: true },
+                animations: { enabled: false },
+                selection: { enabled: true },
+            },
+            colors: datasets.map((dataset) => dataset.color),
+            stroke: { curve: "stepline", width: 2.5 },
+            fill: {
+                type: "gradient",
+                gradient: {
+                    shadeIntensity: 1,
+                    opacityFrom: 0.25,
+                    opacityTo: 0.02,
+                    stops: [0, 100],
+                },
+            },
+            markers: { size: 0, hover: { size: 5, sizeOffset: 2 } },
+            xaxis: {
+                type: "datetime",
+                min: xMin || undefined,
+                max: xMax || undefined,
+                labels: {
+                    style: { colors: "#8ea6c4", fontSize: "11px" },
+                    datetimeUTC: false,
+                },
+                axisBorder: { color: "#213756" },
+                axisTicks: { color: "#213756" },
+                crosshairs: {
+                    stroke: { color: "#31c4ff", width: 1, dashArray: 3 },
+                },
+            },
+            yaxis: {
+                min: 0,
+                max: 100,
+                tickAmount: 5,
+                labels: {
+                    style: { colors: "#8ea6c4", fontSize: "11px" },
+                    formatter: (value) => value.toFixed(0) + "%",
+                },
+            },
+            grid: {
+                borderColor: "rgba(255,255,255,0.06)",
+                strokeDashArray: 3,
+                xaxis: { lines: { show: false } },
+                yaxis: { lines: { show: true } },
+            },
+            tooltip: {
+                theme: "dark",
+                shared: true,
+                intersect: false,
+                x: { format: "MMM dd, yyyy HH:mm" },
+                y: {
+                    formatter: (value) => value !== null && value !== undefined ? value.toFixed(1) + "%" : "—",
+                },
+                marker: { show: true },
+            },
+            legend: { show: false },
+            dataLabels: { enabled: false },
+            theme: { mode: "dark" },
+        };
+    }
+
+    function renderProviderChart(provider, rangeEndTs) {
+        const datasets = datasetsForProvider(provider);
+        const chartElement = document.getElementById(`provider-chart-${provider}`);
+        const emptyElement = document.getElementById(`provider-chart-empty-${provider}`);
+        if (!chartElement || !emptyElement) return;
+        chartElement.innerHTML = "";
+        if (!datasets.length) {
+            emptyElement.style.display = "block";
+            return;
+        }
+        emptyElement.style.display = "none";
+        const xMin = rangeEndTs - chartPeriodToRangeMs(providerPeriod(provider));
+        const xMax = rangeEndTs;
+        providerCharts[provider] = new ApexCharts(chartElement, buildChartOptions(datasets, xMin, xMax));
+        providerCharts[provider].render().then(() => {
+            datasets.forEach((dataset) => {
+                if (hiddenSeriesKeys.has(dataset.key) && providerCharts[provider]) {
+                    providerCharts[provider].hideSeries(dataset.chartLabel);
+                }
+            });
+        });
+    }
+
+    function renderProviderCharts() {
+        const rangeEndTs = chartTimeValue(currentRangeEndAt) || Date.now();
+        providerDatasets = buildProviderDatasets(latestSeries, rangeEndTs);
+        providerOrder.forEach((provider) => renderProviderChart(provider, rangeEndTs));
+        renderAllSeriesChips();
+    }
+
+    async function setProviderRefreshMode(provider, mode) {
+        if (refreshModeRequests.has(provider)) return;
+        refreshModeRequests.add(provider);
+        updateProviderStatusDisplays();
+        try {
+            const body = new URLSearchParams({ mode });
+            const response = await fetch(`/api/provider/${provider}/refresh-mode`, {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: body.toString(),
+            });
+            const data = await response.json();
+            if (!response.ok || !data.ok) {
+                throw new Error((data && data.error) || `Refresh mode update failed (${response.status})`);
+            }
+            latestStates[provider] = data.state || latestStates[provider] || {};
+            pendingBackendRefreshRetry = false;
+            pendingBackendRefreshRetries = 0;
+            scheduleNextRefresh();
+        } catch (error) {
+            latestRefreshError = error instanceof Error ? error.message : "Refresh mode update failed";
+        } finally {
+            refreshModeRequests.delete(provider);
+            updateProviderStatusDisplays();
+        }
+    }
+
+    async function loadData(pushState = false) {
+        const loadToken = ++activeLoadToken;
+        if (pushState) history.replaceState({}, "", "/");
+        if (refreshTimeoutId !== null) clearTimeout(refreshTimeoutId);
+        nextRefreshAt = null;
+        latestRefreshError = "";
+
+        const previousStates = latestStates;
+        const previousEarliestCheck = earliestProviderCheck(previousStates);
+        try {
+            const response = await fetch(`/api/history?${buildQuery()}`);
+            if (!response.ok) throw new Error(`Refresh failed (${response.status})`);
+            const data = await response.json();
+            if (loadToken !== activeLoadToken) return;
+
+            providerOrder = Array.isArray(data.provider_order) && data.provider_order.length ? data.provider_order : providerOrder;
+            metricLabels = data.metric_labels || {};
+            latestUsage = data.latest || {};
+            latestStates = data.states || {};
+            latestSeries = data.series || [];
+            currentRangeEndAt = data.filters ? data.filters.end_at : null;
+
+            const backendAdvanced = providersAdvanced(previousStates, latestStates);
+            const overdue = Boolean(
+                previousEarliestCheck &&
+                Date.now() >= previousEarliestCheck.getTime() + refreshBufferMs &&
+                !backendAdvanced
+            );
+            pendingBackendRefreshRetry = overdue && pendingBackendRefreshRetries < 3;
+            if (backendAdvanced || !overdue) pendingBackendRefreshRetries = 0;
+            else if (pendingBackendRefreshRetry) pendingBackendRefreshRetries += 1;
+
+            renderProviderSections();
+        } catch (error) {
+            if (loadToken !== activeLoadToken) return;
+            latestRefreshError = error instanceof Error ? error.message : "Refresh failed";
+        } finally {
+            if (loadToken !== activeLoadToken) return;
+            scheduleNextRefresh();
+        }
+    }
+
+    applyStoredDashboardPreferences();
+    startRefreshTicker();
     loadData(true);
     </script>
 </body>

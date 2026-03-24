@@ -1,7 +1,7 @@
 from datetime import datetime
 import unittest
 
-from token_burn.web import _resolve_range
+from token_burn.web import _dashboard_provider_order, _resolve_range
 
 
 class WebTests(unittest.TestCase):
@@ -16,6 +16,15 @@ class WebTests(unittest.TestCase):
         end_at = datetime.fromisoformat(filters["end_at"])
 
         self.assertTrue(3599 <= (end_at - start_at).total_seconds() <= 3601)
+
+    def test_dashboard_provider_order_defaults_to_codex_first(self) -> None:
+        self.assertEqual(_dashboard_provider_order({}), ["codex", "claude"])
+
+    def test_dashboard_provider_order_respects_saved_top_provider(self) -> None:
+        self.assertEqual(
+            _dashboard_provider_order({"dashboard_top_provider": "claude"}),
+            ["claude", "codex"],
+        )
 
 
 if __name__ == "__main__":

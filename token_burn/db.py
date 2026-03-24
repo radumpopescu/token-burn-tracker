@@ -65,6 +65,10 @@ class Database:
                     last_hash TEXT,
                     last_error TEXT,
                     last_summary TEXT,
+                    next_check_at TEXT,
+                    current_poll_interval_seconds INTEGER NOT NULL DEFAULT 60,
+                    refresh_mode TEXT NOT NULL DEFAULT 'auto',
+                    unchanged_since_at TEXT,
                     consecutive_failures INTEGER NOT NULL DEFAULT 0,
                     updated_at TEXT NOT NULL
                 );
@@ -128,10 +132,21 @@ class Database:
                 """
             )
 
+            _ensure_column(conn, "provider_state", "next_check_at", "TEXT")
+            _ensure_column(
+                conn,
+                "provider_state",
+                "current_poll_interval_seconds",
+                f"INTEGER NOT NULL DEFAULT {DEFAULT_POLL_INTERVAL_SECONDS}",
+            )
+            _ensure_column(conn, "provider_state", "refresh_mode", "TEXT NOT NULL DEFAULT 'auto'")
+            _ensure_column(conn, "provider_state", "unchanged_since_at", "TEXT")
+
             now = _utcnow()
             for key, value in (
                 ("poll_interval_seconds", str(DEFAULT_POLL_INTERVAL_SECONDS)),
                 ("heartbeat_interval_seconds", str(DEFAULT_HEARTBEAT_INTERVAL_SECONDS)),
+                ("dashboard_top_provider", "codex"),
             ):
                 conn.execute(
                     """
@@ -321,9 +336,14 @@ class Database:
         self,
         provider: str,
         *,
+        checked_at: str,
         state_hash: str,
         summary: str,
         recorded_snapshot_at: str | None,
+        next_check_at: str | None,
+        current_poll_interval_seconds: int,
+        refresh_mode: str,
+        unchanged_since_at: str | None,
     ) -> None:
         with self.connect() as conn:
             conn.execute(
@@ -336,9 +356,13 @@ class Database:
                     last_hash,
                     last_error,
                     last_summary,
+                    next_check_at,
+                    current_poll_interval_seconds,
+                    refresh_mode,
+                    unchanged_since_at,
                     consecutive_failures,
                     updated_at
-                ) VALUES (?, ?, ?, ?, ?, NULL, ?, 0, ?)
+                ) VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, 0, ?)
                 ON CONFLICT(provider) DO UPDATE SET
                     last_checked_at=excluded.last_checked_at,
                     last_success_at=excluded.last_success_at,
@@ -346,21 +370,39 @@ class Database:
                     last_hash=excluded.last_hash,
                     last_error=NULL,
                     last_summary=excluded.last_summary,
+                    next_check_at=excluded.next_check_at,
+                    current_poll_interval_seconds=excluded.current_poll_interval_seconds,
+                    refresh_mode=excluded.refresh_mode,
+                    unchanged_since_at=excluded.unchanged_since_at,
                     consecutive_failures=0,
                     updated_at=excluded.updated_at
                 """,
                 (
                     provider,
-                    _utcnow(),
-                    _utcnow(),
+                    checked_at,
+                    checked_at,
                     recorded_snapshot_at,
                     state_hash,
                     summary,
+                    next_check_at,
+                    current_poll_interval_seconds,
+                    refresh_mode,
+                    unchanged_since_at,
                     _utcnow(),
                 ),
             )
 
-    def record_failure(self, provider: str, error: str) -> None:
+    def record_failure(
+        self,
+        provider: str,
+        error: str,
+        *,
+        checked_at: str,
+        next_check_at: str | None,
+        current_poll_interval_seconds: int,
+        refresh_mode: str,
+        unchanged_since_at: str | None,
+    ) -> None:
         with self.connect() as conn:
             conn.execute(
                 """
@@ -368,16 +410,70 @@ class Database:
                     provider,
                     last_checked_at,
                     last_error,
+                    next_check_at,
+                    current_poll_interval_seconds,
+                    refresh_mode,
+                    unchanged_since_at,
                     consecutive_failures,
                     updated_at
-                ) VALUES (?, ?, ?, 1, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
                 ON CONFLICT(provider) DO UPDATE SET
                     last_checked_at=excluded.last_checked_at,
                     last_error=excluded.last_error,
+                    next_check_at=excluded.next_check_at,
+                    current_poll_interval_seconds=excluded.current_poll_interval_seconds,
+                    refresh_mode=excluded.refresh_mode,
+                    unchanged_since_at=excluded.unchanged_since_at,
                     consecutive_failures=provider_state.consecutive_failures + 1,
                     updated_at=excluded.updated_at
                 """,
-                (provider, _utcnow(), error[:500], _utcnow()),
+                (
+                    provider,
+                    checked_at,
+                    error[:500],
+                    next_check_at,
+                    current_poll_interval_seconds,
+                    refresh_mode,
+                    unchanged_since_at,
+                    _utcnow(),
+                ),
+            )
+
+    def update_provider_schedule(
+        self,
+        provider: str,
+        *,
+        refresh_mode: str,
+        current_poll_interval_seconds: int,
+        next_check_at: str | None,
+        unchanged_since_at: str | None,
+    ) -> None:
+        with self.connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO provider_state (
+                    provider,
+                    refresh_mode,
+                    current_poll_interval_seconds,
+                    next_check_at,
+                    unchanged_since_at,
+                    updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(provider) DO UPDATE SET
+                    refresh_mode=excluded.refresh_mode,
+                    current_poll_interval_seconds=excluded.current_poll_interval_seconds,
+                    next_check_at=excluded.next_check_at,
+                    unchanged_since_at=excluded.unchanged_since_at,
+                    updated_at=excluded.updated_at
+                """,
+                (
+                    provider,
+                    refresh_mode,
+                    current_poll_interval_seconds,
+                    next_check_at,
+                    unchanged_since_at,
+                    _utcnow(),
+                ),
             )
 
     def insert_snapshot(self, snapshot: UsageSnapshot, reason: str, state_hash: str) -> int:
@@ -787,3 +883,13 @@ def _row_to_config(row: sqlite3.Row) -> ProviderConfig:
 
 def _utcnow() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _ensure_column(conn: sqlite3.Connection, table: str, column: str, definition: str) -> None:
+    existing = {
+        row["name"]
+        for row in conn.execute(f"PRAGMA table_info({table})").fetchall()
+    }
+    if column in existing:
+        return
+    conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")

@@ -258,6 +258,134 @@ class UsageStorageTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(current_by_key["primary_window"], snapshots[0].recorded_at if snapshots else (base + timedelta(minutes=1)).isoformat())
         self.assertEqual(current_by_key["secondary_window"], base.isoformat())
 
+    async def test_auto_refresh_interval_steps_up_after_each_ten_minutes_unchanged(self) -> None:
+        base = datetime.now(timezone.utc)
+        snapshots = deque(
+            [
+                _snapshot(
+                    provider="codex",
+                    recorded_at=base.isoformat(),
+                    metrics=[_percent_metric("primary_window", "Primary window", 10.0, "2026-03-24T12:00:00+00:00")],
+                ),
+                _snapshot(
+                    provider="codex",
+                    recorded_at=(base + timedelta(minutes=10)).isoformat(),
+                    metrics=[_percent_metric("primary_window", "Primary window", 10.0, "2026-03-24T12:00:00+00:00")],
+                ),
+                _snapshot(
+                    provider="codex",
+                    recorded_at=(base + timedelta(minutes=20)).isoformat(),
+                    metrics=[_percent_metric("primary_window", "Primary window", 10.0, "2026-03-24T12:00:00+00:00")],
+                ),
+            ]
+        )
+
+        db = self.make_db()
+        service = UsageMonitorService(db, _DummySecretBox())
+        _enable_provider(db, "codex")
+
+        async def fake_collect_usage(config, secret_value):
+            return CollectionResult(snapshot=snapshots.popleft())
+
+        with _patched_collect(fake_collect_usage):
+            await service.run_once(provider="codex")
+            await service.run_once(provider="codex")
+            await service.run_once(provider="codex")
+
+        state = db.get_provider_state("codex") or {}
+        self.assertEqual(state["refresh_mode"], "auto")
+        self.assertEqual(state["current_poll_interval_seconds"], 180)
+        self.assertEqual(state["unchanged_since_at"], (base + timedelta(minutes=20)).isoformat())
+
+    async def test_changed_snapshot_resets_auto_refresh_interval_to_one_minute(self) -> None:
+        base = datetime.now(timezone.utc)
+        snapshots = deque(
+            [
+                _snapshot(
+                    provider="codex",
+                    recorded_at=base.isoformat(),
+                    metrics=[_percent_metric("primary_window", "Primary window", 10.0, "2026-03-24T12:00:00+00:00")],
+                ),
+                _snapshot(
+                    provider="codex",
+                    recorded_at=(base + timedelta(minutes=10)).isoformat(),
+                    metrics=[_percent_metric("primary_window", "Primary window", 10.0, "2026-03-24T12:00:00+00:00")],
+                ),
+                _snapshot(
+                    provider="codex",
+                    recorded_at=(base + timedelta(minutes=20)).isoformat(),
+                    metrics=[_percent_metric("primary_window", "Primary window", 10.0, "2026-03-24T12:00:00+00:00")],
+                ),
+                _snapshot(
+                    provider="codex",
+                    recorded_at=(base + timedelta(minutes=21)).isoformat(),
+                    metrics=[_percent_metric("primary_window", "Primary window", 18.0, "2026-03-24T12:00:00+00:00")],
+                ),
+            ]
+        )
+
+        db = self.make_db()
+        service = UsageMonitorService(db, _DummySecretBox())
+        _enable_provider(db, "codex")
+
+        async def fake_collect_usage(config, secret_value):
+            return CollectionResult(snapshot=snapshots.popleft())
+
+        with _patched_collect(fake_collect_usage):
+            await service.run_once(provider="codex")
+            await service.run_once(provider="codex")
+            await service.run_once(provider="codex")
+            changed = await service.run_once(provider="codex")
+
+        self.assertEqual(changed[0]["reason"], "changed")
+        state = db.get_provider_state("codex") or {}
+        self.assertEqual(state["current_poll_interval_seconds"], 60)
+        self.assertIsNone(state["unchanged_since_at"])
+
+    async def test_next_check_uses_earlier_reset_boundary_when_fixed_interval_is_longer(self) -> None:
+        base = datetime.now(timezone.utc)
+        reset_at = base + timedelta(minutes=2)
+        snapshots = deque(
+            [
+                _snapshot(
+                    provider="codex",
+                    recorded_at=base.isoformat(),
+                    metrics=[_percent_metric("primary_window", "Primary window", 10.0, reset_at.isoformat())],
+                ),
+                _snapshot(
+                    provider="codex",
+                    recorded_at=(base + timedelta(minutes=1)).isoformat(),
+                    metrics=[_percent_metric("primary_window", "Primary window", 10.0, reset_at.isoformat())],
+                ),
+            ]
+        )
+
+        db = self.make_db()
+        service = UsageMonitorService(db, _DummySecretBox())
+        _enable_provider(db, "codex")
+
+        async def fake_collect_usage(config, secret_value):
+            return CollectionResult(snapshot=snapshots.popleft())
+
+        with _patched_collect(fake_collect_usage):
+            await service.run_once(provider="codex")
+            db.update_provider_schedule(
+                "codex",
+                refresh_mode="10m",
+                current_poll_interval_seconds=600,
+                next_check_at=None,
+                unchanged_since_at=None,
+            )
+            await service.run_once(provider="codex")
+
+        state = db.get_provider_state("codex") or {}
+        self.assertEqual(state["refresh_mode"], "10m")
+        self.assertEqual(state["current_poll_interval_seconds"], 600)
+        self.assertEqual(
+            state["next_check_at"],
+            (reset_at + timedelta(seconds=3)).isoformat(),
+        )
+
 def _enable_provider(db: Database, provider: str) -> None:
     db.update_provider_config(
         provider=provider,

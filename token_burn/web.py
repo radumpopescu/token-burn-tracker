@@ -93,6 +93,7 @@ async def dashboard(
                 "heartbeat_interval_seconds",
                 str(DEFAULT_HEARTBEAT_INTERVAL_SECONDS),
             ),
+            "provider_order": _dashboard_provider_order(settings),
         },
     )
 
@@ -133,6 +134,7 @@ async def api_history(
             end_at=filters["end_at"],
             limit=250,
         ),
+        "provider_order": _dashboard_provider_order(settings),
     }
     return JSONResponse(payload)
 
@@ -167,6 +169,7 @@ async def settings_page(request: Request, db: Database = Depends(get_db)):
             "secret_details": secret_details,
             "known_metrics": known_metrics,
             "metric_labels": metric_labels,
+            "dashboard_top_provider": _dashboard_provider_order(settings)[0] if provider_choices() else "",
         },
     )
 
@@ -252,6 +255,18 @@ async def update_app_settings(
     return RedirectResponse(url="/settings?notice=app-settings-saved", status_code=303)
 
 
+@app.post("/settings/layout", dependencies=[Depends(require_admin)])
+async def update_dashboard_layout(
+    dashboard_top_provider: Annotated[str, Form()],
+    db: Database = Depends(get_db),
+):
+    available = {spec["provider"] for spec in provider_choices()}
+    if dashboard_top_provider not in available:
+        return RedirectResponse(url="/settings?notice=invalid-dashboard-provider", status_code=303)
+    db.update_app_setting("dashboard_top_provider", dashboard_top_provider)
+    return RedirectResponse(url="/settings?notice=layout-saved", status_code=303)
+
+
 @app.post("/settings/labels", dependencies=[Depends(require_admin)])
 async def update_metric_labels(
     request: Request,
@@ -287,6 +302,21 @@ async def test_provider(
     results = await monitor.run_once(provider=provider)
     result = results[0] if results else {"ok": False, "error": "No result"}
     return JSONResponse(result)
+
+
+@app.post("/api/provider/{provider}/refresh-mode")
+async def update_provider_refresh_mode(
+    provider: str,
+    mode: Annotated[str, Form()],
+    monitor: UsageMonitorService = Depends(get_monitor),
+) -> JSONResponse:
+    if provider not in PROVIDER_SPECS:
+        return JSONResponse({"ok": False, "error": "Unknown provider"}, status_code=400)
+    try:
+        state = await monitor.set_refresh_mode(provider, mode)
+    except ValueError as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
+    return JSONResponse({"ok": True, "provider": provider, "state": state})
 
 
 @app.get("/healthz")
@@ -344,6 +374,16 @@ def _parse_metric_labels(raw: str) -> dict[str, str]:
     except (json.JSONDecodeError, TypeError):
         pass
     return {}
+
+
+def _dashboard_provider_order(settings: dict[str, str]) -> list[str]:
+    available = [spec["provider"] for spec in provider_choices()]
+    if not available:
+        return []
+    top_provider = settings.get("dashboard_top_provider") or ("codex" if "codex" in available else available[0])
+    if top_provider not in available:
+        top_provider = "codex" if "codex" in available else available[0]
+    return [top_provider, *[provider for provider in available if provider != top_provider]]
 
 
 def _parse_datetime(value: str) -> datetime | None:
