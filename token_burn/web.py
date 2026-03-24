@@ -17,8 +17,11 @@ from fastapi.templating import Jinja2Templates
 from .crypto import SecretBox
 from .db import (
     DB_SENTINEL,
+    DEFAULT_AUTO_REFRESH_EQUAL_POLLS_BEFORE_STEP,
+    DEFAULT_AUTO_REFRESH_STEP_SECONDS,
     DEFAULT_HEARTBEAT_INTERVAL_SECONDS,
     DEFAULT_POLL_INTERVAL_SECONDS,
+    DEFAULT_SLOW_REFRESH_INTERVAL_SECONDS,
     Database,
 )
 from .providers import PROVIDER_SPECS, provider_choices
@@ -93,6 +96,7 @@ async def dashboard(
                 "heartbeat_interval_seconds",
                 str(DEFAULT_HEARTBEAT_INTERVAL_SECONDS),
             ),
+            "refresh_settings": _refresh_settings(settings),
             "provider_order": _dashboard_provider_order(settings),
         },
     )
@@ -109,12 +113,11 @@ async def api_history(
     filters = _resolve_range(period=period, start=start, end=end)
     settings = db.get_app_settings()
     metric_labels = _parse_metric_labels(settings.get("metric_labels", "{}"))
+    refresh_settings = _refresh_settings(settings)
     payload = {
         "filters": filters,
-        "poll_interval_seconds": max(
-            DEFAULT_POLL_INTERVAL_SECONDS,
-            int(settings.get("poll_interval_seconds", str(DEFAULT_POLL_INTERVAL_SECONDS))),
-        ),
+        "poll_interval_seconds": refresh_settings["fast_interval_seconds"],
+        "refresh_settings": refresh_settings,
         "metric_labels": metric_labels,
         "latest": db.latest_snapshots_by_provider(),
         "states": db.get_provider_states(),
@@ -155,6 +158,7 @@ async def settings_page(request: Request, db: Database = Depends(get_db)):
     settings = db.get_app_settings()
     metric_labels = _parse_metric_labels(settings.get("metric_labels", "{}"))
     known_metrics = db.list_distinct_metrics()
+    refresh_settings = _refresh_settings(settings)
     return templates.TemplateResponse(
         "settings.html",
         {
@@ -170,6 +174,7 @@ async def settings_page(request: Request, db: Database = Depends(get_db)):
             "known_metrics": known_metrics,
             "metric_labels": metric_labels,
             "dashboard_top_provider": _dashboard_provider_order(settings)[0] if provider_choices() else "",
+            "refresh_settings": refresh_settings,
         },
     )
 
@@ -246,12 +251,25 @@ async def update_provider_settings(
 
 @app.post("/settings/app", dependencies=[Depends(require_admin)])
 async def update_app_settings(
-    poll_interval_seconds: Annotated[int, Form()],
+    poll_interval_minutes: Annotated[int, Form()],
+    slow_refresh_interval_minutes: Annotated[int, Form()],
+    auto_refresh_step_minutes: Annotated[int, Form()],
+    auto_refresh_equal_polls_before_step: Annotated[int, Form()],
     heartbeat_interval_seconds: Annotated[int, Form()],
     db: Database = Depends(get_db),
 ):
-    db.update_app_setting("poll_interval_seconds", str(max(60, poll_interval_seconds)))
+    fast_seconds = max(60, poll_interval_minutes * 60)
+    slow_seconds = max(fast_seconds, slow_refresh_interval_minutes * 60)
+    auto_step_seconds = max(60, auto_refresh_step_minutes * 60)
+    equal_polls_before_step = max(1, auto_refresh_equal_polls_before_step)
+    db.update_app_setting("poll_interval_seconds", str(fast_seconds))
     db.update_app_setting("heartbeat_interval_seconds", str(max(300, heartbeat_interval_seconds)))
+    db.update_app_setting("slow_refresh_interval_seconds", str(slow_seconds))
+    db.update_app_setting("auto_refresh_step_seconds", str(auto_step_seconds))
+    db.update_app_setting(
+        "auto_refresh_equal_polls_before_step",
+        str(equal_polls_before_step),
+    )
     return RedirectResponse(url="/settings?notice=app-settings-saved", status_code=303)
 
 
@@ -384,6 +402,68 @@ def _dashboard_provider_order(settings: dict[str, str]) -> list[str]:
     if top_provider not in available:
         top_provider = "codex" if "codex" in available else available[0]
     return [top_provider, *[provider for provider in available if provider != top_provider]]
+
+
+def _refresh_settings(settings: dict[str, str]) -> dict[str, Any]:
+    fast_interval_seconds = _parse_int_setting(
+        settings,
+        "poll_interval_seconds",
+        default=DEFAULT_POLL_INTERVAL_SECONDS,
+        minimum=60,
+    )
+    slow_interval_seconds = _parse_int_setting(
+        settings,
+        "slow_refresh_interval_seconds",
+        default=DEFAULT_SLOW_REFRESH_INTERVAL_SECONDS,
+        minimum=fast_interval_seconds,
+    )
+    auto_step_seconds = _parse_int_setting(
+        settings,
+        "auto_refresh_step_seconds",
+        default=DEFAULT_AUTO_REFRESH_STEP_SECONDS,
+        minimum=60,
+    )
+    equal_polls_before_step = _parse_int_setting(
+        settings,
+        "auto_refresh_equal_polls_before_step",
+        default=DEFAULT_AUTO_REFRESH_EQUAL_POLLS_BEFORE_STEP,
+        minimum=1,
+    )
+    return {
+        "fast_interval_seconds": fast_interval_seconds,
+        "slow_interval_seconds": max(fast_interval_seconds, slow_interval_seconds),
+        "auto_step_seconds": auto_step_seconds,
+        "equal_polls_before_step": equal_polls_before_step,
+        "fast_interval_minutes": max(1, fast_interval_seconds // 60),
+        "slow_interval_minutes": max(1, slow_interval_seconds // 60),
+        "auto_step_minutes": max(1, auto_step_seconds // 60),
+        "fast_label": _interval_label(fast_interval_seconds),
+        "slow_label": _interval_label(max(fast_interval_seconds, slow_interval_seconds)),
+    }
+
+
+def _parse_int_setting(
+    settings: dict[str, str],
+    key: str,
+    *,
+    default: int,
+    minimum: int,
+) -> int:
+    try:
+        value = int(settings.get(key, str(default)))
+    except (TypeError, ValueError):
+        value = default
+    return max(minimum, value)
+
+
+def _interval_label(seconds: int) -> str:
+    if seconds % 3600 == 0:
+        hours = seconds // 3600
+        return f"{hours}h"
+    if seconds % 60 == 0:
+        minutes = seconds // 60
+        return f"{minutes}m"
+    return f"{seconds}s"
 
 
 def _parse_datetime(value: str) -> datetime | None:

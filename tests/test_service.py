@@ -180,6 +180,13 @@ class UsageStorageTests(unittest.IsolatedAsyncioTestCase):
         db = self.make_db()
         service = UsageMonitorService(db, _DummySecretBox())
         _enable_provider(db, "codex")
+        _configure_auto_refresh(
+            db,
+            fast_interval_seconds=60,
+            slow_interval_seconds=600,
+            auto_step_seconds=60,
+            unchanged_polls_before_step=1,
+        )
 
         async def fake_collect_usage(config, secret_value):
             return CollectionResult(snapshot=snapshots.popleft())
@@ -331,6 +338,13 @@ class UsageStorageTests(unittest.IsolatedAsyncioTestCase):
         db = self.make_db()
         service = UsageMonitorService(db, _DummySecretBox())
         _enable_provider(db, "codex")
+        _configure_auto_refresh(
+            db,
+            fast_interval_seconds=60,
+            slow_interval_seconds=600,
+            auto_step_seconds=60,
+            unchanged_polls_before_step=1,
+        )
 
         async def fake_collect_usage(config, secret_value):
             return CollectionResult(snapshot=snapshots.popleft())
@@ -437,6 +451,13 @@ class UsageStorageTests(unittest.IsolatedAsyncioTestCase):
         db = self.make_db()
         service = UsageMonitorService(db, _DummySecretBox())
         _enable_provider(db, "codex")
+        _configure_auto_refresh(
+            db,
+            fast_interval_seconds=60,
+            slow_interval_seconds=600,
+            auto_step_seconds=60,
+            unchanged_polls_before_step=1,
+        )
 
         async def fake_collect_usage(config, secret_value):
             return CollectionResult(snapshot=snapshots.popleft())
@@ -529,6 +550,7 @@ class UsageStorageTests(unittest.IsolatedAsyncioTestCase):
                 current_poll_interval_seconds=600,
                 next_check_at=None,
                 unchanged_since_at=None,
+                unchanged_poll_count=0,
             )
             await service.run_once(provider="codex")
 
@@ -550,6 +572,23 @@ def _enable_provider(db: Database, provider: str) -> None:
         headers_json="{}",
         notes="",
         secret_blob="cookie=1",
+    )
+
+
+def _configure_auto_refresh(
+    db: Database,
+    *,
+    fast_interval_seconds: int,
+    slow_interval_seconds: int,
+    auto_step_seconds: int,
+    unchanged_polls_before_step: int,
+) -> None:
+    db.update_app_setting("poll_interval_seconds", str(fast_interval_seconds))
+    db.update_app_setting("slow_refresh_interval_seconds", str(slow_interval_seconds))
+    db.update_app_setting("auto_refresh_step_seconds", str(auto_step_seconds))
+    db.update_app_setting(
+        "auto_refresh_equal_polls_before_step",
+        str(unchanged_polls_before_step),
     )
 
 

@@ -1,7 +1,7 @@
 from datetime import datetime
 import unittest
 
-from token_burn.web import _dashboard_provider_order, _resolve_range
+from token_burn.web import _dashboard_provider_order, _refresh_settings, _resolve_range
 
 
 class WebTests(unittest.TestCase):
@@ -25,6 +25,32 @@ class WebTests(unittest.TestCase):
             _dashboard_provider_order({"dashboard_top_provider": "claude"}),
             ["claude", "codex"],
         )
+
+    def test_refresh_settings_defaults_match_current_behavior(self) -> None:
+        settings = _refresh_settings({})
+
+        self.assertEqual(settings["fast_interval_seconds"], 60)
+        self.assertEqual(settings["slow_interval_seconds"], 600)
+        self.assertEqual(settings["auto_step_seconds"], 60)
+        self.assertEqual(settings["equal_polls_before_step"], 10)
+        self.assertEqual(settings["fast_label"], "1m")
+        self.assertEqual(settings["slow_label"], "10m")
+
+    def test_refresh_settings_clamp_slow_interval_to_fast_interval(self) -> None:
+        settings = _refresh_settings(
+            {
+                "poll_interval_seconds": "180",
+                "slow_refresh_interval_seconds": "60",
+                "auto_refresh_step_seconds": "120",
+                "auto_refresh_equal_polls_before_step": "3",
+            }
+        )
+
+        self.assertEqual(settings["fast_interval_seconds"], 180)
+        self.assertEqual(settings["slow_interval_seconds"], 180)
+        self.assertEqual(settings["auto_step_seconds"], 120)
+        self.assertEqual(settings["equal_polls_before_step"], 3)
+        self.assertEqual(settings["fast_label"], "3m")
 
 
 if __name__ == "__main__":

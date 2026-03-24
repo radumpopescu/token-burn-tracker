@@ -15,6 +15,9 @@ from .providers import provider_choices
 DB_SENTINEL = object()
 DEFAULT_POLL_INTERVAL_SECONDS = 60
 DEFAULT_HEARTBEAT_INTERVAL_SECONDS = 3600
+DEFAULT_SLOW_REFRESH_INTERVAL_SECONDS = 10 * 60
+DEFAULT_AUTO_REFRESH_STEP_SECONDS = 60
+DEFAULT_AUTO_REFRESH_EQUAL_POLLS_BEFORE_STEP = 10
 RAW_PAYLOAD_LOG_RETENTION = timedelta(days=1)
 EMPTY_JSON = "{}"
 
@@ -72,6 +75,7 @@ class Database:
                     current_poll_interval_seconds INTEGER NOT NULL DEFAULT 60,
                     refresh_mode TEXT NOT NULL DEFAULT 'auto',
                     unchanged_since_at TEXT,
+                    unchanged_poll_count INTEGER NOT NULL DEFAULT 0,
                     consecutive_failures INTEGER NOT NULL DEFAULT 0,
                     updated_at TEXT NOT NULL
                 );
@@ -144,11 +148,18 @@ class Database:
             )
             _ensure_column(conn, "provider_state", "refresh_mode", "TEXT NOT NULL DEFAULT 'auto'")
             _ensure_column(conn, "provider_state", "unchanged_since_at", "TEXT")
+            _ensure_column(conn, "provider_state", "unchanged_poll_count", "INTEGER NOT NULL DEFAULT 0")
 
             now = _utcnow()
             for key, value in (
                 ("poll_interval_seconds", str(DEFAULT_POLL_INTERVAL_SECONDS)),
                 ("heartbeat_interval_seconds", str(DEFAULT_HEARTBEAT_INTERVAL_SECONDS)),
+                ("slow_refresh_interval_seconds", str(DEFAULT_SLOW_REFRESH_INTERVAL_SECONDS)),
+                ("auto_refresh_step_seconds", str(DEFAULT_AUTO_REFRESH_STEP_SECONDS)),
+                (
+                    "auto_refresh_equal_polls_before_step",
+                    str(DEFAULT_AUTO_REFRESH_EQUAL_POLLS_BEFORE_STEP),
+                ),
                 ("dashboard_top_provider", "codex"),
             ):
                 conn.execute(
@@ -349,6 +360,7 @@ class Database:
         current_poll_interval_seconds: int,
         refresh_mode: str,
         unchanged_since_at: str | None,
+        unchanged_poll_count: int,
     ) -> None:
         with self.connect() as conn:
             conn.execute(
@@ -365,9 +377,10 @@ class Database:
                     current_poll_interval_seconds,
                     refresh_mode,
                     unchanged_since_at,
+                    unchanged_poll_count,
                     consecutive_failures,
                     updated_at
-                ) VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, 0, ?)
+                ) VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, 0, ?)
                 ON CONFLICT(provider) DO UPDATE SET
                     last_checked_at=excluded.last_checked_at,
                     last_success_at=excluded.last_success_at,
@@ -379,6 +392,7 @@ class Database:
                     current_poll_interval_seconds=excluded.current_poll_interval_seconds,
                     refresh_mode=excluded.refresh_mode,
                     unchanged_since_at=excluded.unchanged_since_at,
+                    unchanged_poll_count=excluded.unchanged_poll_count,
                     consecutive_failures=0,
                     updated_at=excluded.updated_at
                 """,
@@ -393,6 +407,7 @@ class Database:
                     current_poll_interval_seconds,
                     refresh_mode,
                     unchanged_since_at,
+                    unchanged_poll_count,
                     _utcnow(),
                 ),
             )
@@ -407,6 +422,7 @@ class Database:
         current_poll_interval_seconds: int,
         refresh_mode: str,
         unchanged_since_at: str | None,
+        unchanged_poll_count: int,
     ) -> None:
         with self.connect() as conn:
             conn.execute(
@@ -419,9 +435,10 @@ class Database:
                     current_poll_interval_seconds,
                     refresh_mode,
                     unchanged_since_at,
+                    unchanged_poll_count,
                     consecutive_failures,
                     updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
                 ON CONFLICT(provider) DO UPDATE SET
                     last_checked_at=excluded.last_checked_at,
                     last_error=excluded.last_error,
@@ -429,6 +446,7 @@ class Database:
                     current_poll_interval_seconds=excluded.current_poll_interval_seconds,
                     refresh_mode=excluded.refresh_mode,
                     unchanged_since_at=excluded.unchanged_since_at,
+                    unchanged_poll_count=excluded.unchanged_poll_count,
                     consecutive_failures=provider_state.consecutive_failures + 1,
                     updated_at=excluded.updated_at
                 """,
@@ -440,6 +458,7 @@ class Database:
                     current_poll_interval_seconds,
                     refresh_mode,
                     unchanged_since_at,
+                    unchanged_poll_count,
                     _utcnow(),
                 ),
             )
@@ -452,6 +471,7 @@ class Database:
         current_poll_interval_seconds: int,
         next_check_at: str | None,
         unchanged_since_at: str | None,
+        unchanged_poll_count: int,
     ) -> None:
         with self.connect() as conn:
             conn.execute(
@@ -462,13 +482,15 @@ class Database:
                     current_poll_interval_seconds,
                     next_check_at,
                     unchanged_since_at,
+                    unchanged_poll_count,
                     updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(provider) DO UPDATE SET
                     refresh_mode=excluded.refresh_mode,
                     current_poll_interval_seconds=excluded.current_poll_interval_seconds,
                     next_check_at=excluded.next_check_at,
                     unchanged_since_at=excluded.unchanged_since_at,
+                    unchanged_poll_count=excluded.unchanged_poll_count,
                     updated_at=excluded.updated_at
                 """,
                 (
@@ -477,6 +499,7 @@ class Database:
                     current_poll_interval_seconds,
                     next_check_at,
                     unchanged_since_at,
+                    unchanged_poll_count,
                     _utcnow(),
                 ),
             )

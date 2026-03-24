@@ -1298,6 +1298,7 @@
     const refreshBufferMs = 3000;
     const chartStepMs = 60 * 1000;
     let providerOrder = {{ provider_order|tojson }};
+    let refreshSettings = {{ refresh_settings|tojson }};
     let providerCharts = {};
     let providerDatasets = {};
     let providerPeriods = {};
@@ -1461,10 +1462,19 @@
         return ["auto", "1m", "10m"].includes(mode) ? mode : "auto";
     }
 
+    function refreshModeButtonLabel(mode) {
+        if (mode === "1m") return (refreshSettings && refreshSettings.fast_label) || "1m";
+        if (mode === "10m") return (refreshSettings && refreshSettings.slow_label) || "10m";
+        return "Auto";
+    }
+
     function providerIntervalSeconds(state) {
         const mode = providerRefreshMode(state);
-        if (mode === "1m") return 60;
-        if (mode === "10m") return 600;
+        if (mode === "1m") return Math.max(60, Number(refreshSettings && refreshSettings.fast_interval_seconds) || 60);
+        if (mode === "10m") return Math.max(
+            Math.max(60, Number(refreshSettings && refreshSettings.fast_interval_seconds) || 60),
+            Number(refreshSettings && refreshSettings.slow_interval_seconds) || 600,
+        );
         return Math.max(60, Number((state && state.current_poll_interval_seconds) || 60));
     }
 
@@ -1847,8 +1857,8 @@
                     <div class="provider-status-line provider-status-mode">${providerModeLabel(state)}</div>
                     <div class="provider-status-controls">
                         <button type="button" class="provider-mode-btn" data-refresh-mode="auto" onclick="setProviderRefreshMode('${provider}', 'auto')">Auto</button>
-                        <button type="button" class="provider-mode-btn" data-refresh-mode="1m" onclick="setProviderRefreshMode('${provider}', '1m')">1m</button>
-                        <button type="button" class="provider-mode-btn" data-refresh-mode="10m" onclick="setProviderRefreshMode('${provider}', '10m')">10m</button>
+                        <button type="button" class="provider-mode-btn" data-refresh-mode="1m" onclick="setProviderRefreshMode('${provider}', '1m')">${refreshModeButtonLabel("1m")}</button>
+                        <button type="button" class="provider-mode-btn" data-refresh-mode="10m" onclick="setProviderRefreshMode('${provider}', '10m')">${refreshModeButtonLabel("10m")}</button>
                     </div>
                 </div>
             </div>
@@ -2016,11 +2026,21 @@
                     },
                 },
                 zoom: { enabled: true },
-                animations: { enabled: false },
+                animations: {
+                    enabled: true,
+                    easing: "easeinout",
+                    speed: 220,
+                    animateGradually: { enabled: false },
+                    dynamicAnimation: { enabled: true, speed: 220 },
+                },
                 selection: { enabled: true },
             },
             colors: datasets.map((dataset) => dataset.color),
-            stroke: { curve: "stepline", width: 2.5 },
+            stroke: {
+                curve: "smooth",
+                lineCap: "round",
+                width: 3,
+            },
             fill: {
                 type: "gradient",
                 gradient: {
@@ -2149,6 +2169,7 @@
             if (loadToken !== activeLoadToken) return;
 
             providerOrder = Array.isArray(data.provider_order) && data.provider_order.length ? data.provider_order : providerOrder;
+            refreshSettings = data.refresh_settings || refreshSettings;
             metricLabels = data.metric_labels || {};
             latestUsage = data.latest || {};
             latestStates = data.states || {};

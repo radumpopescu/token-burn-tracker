@@ -215,14 +215,27 @@
                 <form action="/settings/app" method="post">
                     <div class="fields">
                         <div class="field">
-                            <label for="poll_interval_seconds">Poll interval (s)</label>
-                            <input id="poll_interval_seconds" name="poll_interval_seconds" type="number" min="60" value="{{ settings.get('poll_interval_seconds', '60') }}">
+                            <label for="poll_interval_minutes">Fast refresh / auto start (min)</label>
+                            <input id="poll_interval_minutes" name="poll_interval_minutes" type="number" min="1" value="{{ refresh_settings.fast_interval_minutes }}">
+                        </div>
+                        <div class="field">
+                            <label for="slow_refresh_interval_minutes">Slow refresh / auto cap (min)</label>
+                            <input id="slow_refresh_interval_minutes" name="slow_refresh_interval_minutes" type="number" min="1" value="{{ refresh_settings.slow_interval_minutes }}">
+                        </div>
+                        <div class="field">
+                            <label for="auto_refresh_step_minutes">Auto step-up size (min)</label>
+                            <input id="auto_refresh_step_minutes" name="auto_refresh_step_minutes" type="number" min="1" value="{{ refresh_settings.auto_step_minutes }}">
+                        </div>
+                        <div class="field">
+                            <label for="auto_refresh_equal_polls_before_step">Equal checks before step-up</label>
+                            <input id="auto_refresh_equal_polls_before_step" name="auto_refresh_equal_polls_before_step" type="number" min="1" value="{{ refresh_settings.equal_polls_before_step }}">
                         </div>
                         <div class="field">
                             <label for="heartbeat_interval_seconds">Heartbeat interval (s)</label>
                             <input id="heartbeat_interval_seconds" name="heartbeat_interval_seconds" type="number" min="300" value="{{ settings.get('heartbeat_interval_seconds', '3600') }}">
                         </div>
                     </div>
+                    <p style="margin:0;color:var(--muted);font-size:0.82rem;">Auto mode starts at the fast refresh value, waits for the configured number of equal checks, then steps up by the chosen amount until it reaches the slow refresh cap.</p>
                     <div class="actions"><button type="submit">Save</button></div>
                 </form>
             </div>
