@@ -11,6 +11,7 @@ Self-hosted usage monitor for Claude and ChatGPT/Codex API rate limits. Polls au
 - **Curl import** for both providers - paste the full curl command from browser devtools
 - **Save & Test** flow with instant pass/fail feedback per provider
 - **Deduplication** - only writes snapshots when usage actually changes, plus periodic heartbeats
+- **Lean storage** - raw provider payloads stay out of SQLite and rotate in one-day NDJSON logs under `data/raw-payloads/`
 - **Encrypted secret storage** with Fernet (optional)
 - **Docker-ready** with a single `docker compose up`
 
@@ -67,9 +68,10 @@ python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().
 
 1. The server stores cookies and auth tokens in SQLite (encrypted if `APP_ENCRYPTION_KEY` is set)
 2. A background poller checks the usage JSON endpoints on a fixed interval
-3. Snapshots are only written when the normalized response changes, plus periodic heartbeats so charts stay continuous
-4. The dashboard auto-refreshes using the configured poll interval and shows the next refresh countdown
-5. No browser automation - it only replays saved cookies/tokens against JSON API endpoints
+3. Snapshot events are only written when the canonical metric state changes, plus periodic heartbeats so charts stay continuous
+4. Raw provider payloads are written to short-lived NDJSON files in `data/raw-payloads/` and pruned after one day instead of inflating the SQLite database
+5. The dashboard auto-refreshes using the configured poll interval and shows the next refresh countdown
+6. No browser automation - it only replays saved cookies/tokens against JSON API endpoints
 
 ## Development
 

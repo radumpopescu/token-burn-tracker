@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
 import sqlite3
@@ -15,11 +15,14 @@ from .providers import provider_choices
 DB_SENTINEL = object()
 DEFAULT_POLL_INTERVAL_SECONDS = 60
 DEFAULT_HEARTBEAT_INTERVAL_SECONDS = 3600
+RAW_PAYLOAD_LOG_RETENTION = timedelta(days=1)
+EMPTY_JSON = "{}"
 
 
 class Database:
     def __init__(self, path: Path):
         self.path = path
+        self.raw_payload_dir = self.path.parent / "raw-payloads"
 
     @contextmanager
     def connect(self) -> sqlite3.Connection:
@@ -190,6 +193,8 @@ class Database:
                     """,
                     (spec["provider"], now),
                 )
+
+        self.compact_snapshot_payload_storage()
 
     def get_app_settings(self) -> dict[str, str]:
         with self.connect() as conn:
@@ -476,6 +481,31 @@ class Database:
                 ),
             )
 
+    def sync_current_metrics(
+        self,
+        snapshot: UsageSnapshot,
+        *,
+        event_id: int | None,
+        persisted_metric_keys: set[str],
+    ) -> None:
+        event_ids_by_metric_key = {
+            metric.key: event_id if metric.key in persisted_metric_keys else None
+            for metric in snapshot.metrics
+        }
+        with self.connect() as conn:
+            self._upsert_current_metrics(
+                conn,
+                snapshot.provider,
+                snapshot.recorded_at,
+                snapshot.metrics,
+                event_ids_by_metric_key,
+            )
+            self._delete_missing_current_metrics(
+                conn,
+                snapshot.provider,
+                {metric.key for metric in snapshot.metrics},
+            )
+
     def insert_snapshot(self, snapshot: UsageSnapshot, reason: str, state_hash: str) -> int:
         with self.connect() as conn:
             return self._insert_snapshot(conn, snapshot, reason, state_hash)
@@ -490,14 +520,9 @@ class Database:
     ) -> int:
         with self.connect() as conn:
             event_id = self._insert_snapshot(conn, snapshot, reason, state_hash)
-            self._upsert_current_metrics(conn, snapshot.provider, snapshot.recorded_at, event_id, metrics_to_persist)
-            self._delete_missing_current_metrics(
-                conn,
-                snapshot.provider,
-                {metric.key for metric in snapshot.metrics},
-            )
             self._insert_metric_samples(conn, snapshot.provider, snapshot.recorded_at, event_id, reason, metrics_to_persist)
-            return event_id
+        self._append_raw_payload_log(snapshot, reason=reason, state_hash=state_hash)
+        return event_id
 
     def latest_snapshots_by_provider(self) -> dict[str, dict[str, Any]]:
         with self.connect() as conn:
@@ -696,9 +721,9 @@ class Database:
                 snapshot.page_title,
                 snapshot.plan_name,
                 snapshot.summary,
-                snapshot.raw_text,
-                snapshot.normalized_json(),
-                snapshot.capture_json(),
+                None,
+                EMPTY_JSON,
+                EMPTY_JSON,
             ),
         )
         return int(cursor.lastrowid)
@@ -751,10 +776,11 @@ class Database:
         conn: sqlite3.Connection,
         provider: str,
         recorded_at: str,
-        event_id: int,
         metrics: list[UsageMetric],
+        event_ids_by_metric_key: dict[str, int | None],
     ) -> None:
         for metric in metrics:
+            event_id = event_ids_by_metric_key.get(metric.key)
             conn.execute(
                 """
                 INSERT INTO current_metrics (
@@ -779,7 +805,7 @@ class Database:
                     limit_value=excluded.limit_value,
                     unit=excluded.unit,
                     stable_extra_json=excluded.stable_extra_json,
-                    event_id=excluded.event_id
+                    event_id=COALESCE(excluded.event_id, current_metrics.event_id)
                 """,
                 (
                     provider,
@@ -795,6 +821,73 @@ class Database:
                     event_id,
                 ),
             )
+
+    def compact_snapshot_payload_storage(self) -> bool:
+        with self.connect() as conn:
+            cursor = conn.execute(
+                """
+                UPDATE snapshots
+                SET raw_text = NULL,
+                    normalized_json = ?,
+                    capture_json = ?
+                WHERE COALESCE(raw_text, '') <> ''
+                   OR normalized_json <> ?
+                   OR capture_json <> ?
+                """,
+                (EMPTY_JSON, EMPTY_JSON, EMPTY_JSON, EMPTY_JSON),
+            )
+            changed = cursor.rowcount > 0
+        if changed:
+            self.vacuum()
+        return changed
+
+    def vacuum(self) -> None:
+        conn = sqlite3.connect(str(self.path))
+        try:
+            conn.execute("VACUUM")
+        finally:
+            conn.close()
+
+    def _append_raw_payload_log(self, snapshot: UsageSnapshot, *, reason: str, state_hash: str) -> None:
+        if not snapshot.raw_text and not snapshot.normalized and not snapshot.capture:
+            return
+        self.raw_payload_dir.mkdir(parents=True, exist_ok=True)
+        recorded_at = _parse_timestamp(snapshot.recorded_at) or datetime.now(timezone.utc)
+        log_path = self.raw_payload_dir / f"{snapshot.provider}-{recorded_at.date().isoformat()}.ndjson"
+        payload = {
+            "provider": snapshot.provider,
+            "recorded_at": snapshot.recorded_at,
+            "reason": reason,
+            "state_hash": state_hash,
+            "page_title": snapshot.page_title,
+            "plan_name": snapshot.plan_name,
+            "summary": snapshot.summary,
+            "raw_text": snapshot.raw_text or None,
+            "normalized": snapshot.normalized or None,
+            "capture": snapshot.capture or None,
+        }
+        try:
+            with log_path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n")
+            self._prune_raw_payload_logs()
+        except OSError:
+            return
+
+    def _prune_raw_payload_logs(self) -> None:
+        if not self.raw_payload_dir.exists():
+            return
+        cutoff = datetime.now(timezone.utc) - RAW_PAYLOAD_LOG_RETENTION
+        for path in self.raw_payload_dir.glob("*.ndjson"):
+            try:
+                modified_at = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
+            except OSError:
+                continue
+            if modified_at >= cutoff:
+                continue
+            try:
+                path.unlink()
+            except OSError:
+                continue
 
     def _delete_missing_current_metrics(
         self,
@@ -883,6 +976,18 @@ def _row_to_config(row: sqlite3.Row) -> ProviderConfig:
 
 def _utcnow() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _parse_timestamp(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        timestamp = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.replace(tzinfo=timezone.utc)
+    return timestamp.astimezone(timezone.utc)
 
 
 def _ensure_column(conn: sqlite3.Connection, table: str, column: str, definition: str) -> None:

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from collections import deque
 from datetime import datetime, timedelta, timezone
+import json
+import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
@@ -93,6 +95,39 @@ class UsageStorageTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(first.state_hash(), second.state_hash())
         self.assertNotEqual(first.state_hash(), changed_value.state_hash())
         self.assertNotEqual(first.state_hash(), changed_window.state_hash())
+
+    async def test_state_hash_ignores_sliding_window_end_when_only_window_moves(self) -> None:
+        base = datetime.now(timezone.utc)
+        first = _snapshot(
+            provider="codex",
+            recorded_at=base.isoformat(),
+            metrics=[
+                UsageMetric(
+                    key="primary_window",
+                    label="Primary window",
+                    percent_value=10.0,
+                    unit="percent",
+                    resets_at=(base + timedelta(hours=5)).isoformat(),
+                    extra={"limit_window_seconds": 18000, "allowed": True},
+                )
+            ],
+        )
+        second = _snapshot(
+            provider="codex",
+            recorded_at=(base + timedelta(minutes=1)).isoformat(),
+            metrics=[
+                UsageMetric(
+                    key="primary_window",
+                    label="Primary window",
+                    percent_value=10.0,
+                    unit="percent",
+                    resets_at=(base + timedelta(hours=5, minutes=1)).isoformat(),
+                    extra={"limit_window_seconds": 18000, "allowed": True},
+                )
+            ],
+        )
+
+        self.assertEqual(first.state_hash(), second.state_hash())
 
     async def test_single_metric_change_only_persists_that_metric(self) -> None:
         base = datetime.now(timezone.utc)
@@ -256,7 +291,126 @@ class UsageStorageTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([row[0] for row in latest_event_rows], ["primary_window"])
         current_by_key = {row[0]: row[1] for row in current_rows}
         self.assertEqual(current_by_key["primary_window"], snapshots[0].recorded_at if snapshots else (base + timedelta(minutes=1)).isoformat())
-        self.assertEqual(current_by_key["secondary_window"], base.isoformat())
+        self.assertEqual(current_by_key["secondary_window"], snapshots[0].recorded_at if snapshots else (base + timedelta(minutes=1)).isoformat())
+
+    async def test_sliding_window_refresh_updates_current_metrics_without_new_event(self) -> None:
+        base = datetime.now(timezone.utc)
+        snapshots = deque(
+            [
+                _snapshot(
+                    provider="codex",
+                    recorded_at=base.isoformat(),
+                    metrics=[
+                        UsageMetric(
+                            key="primary_window",
+                            label="Primary window",
+                            percent_value=10.0,
+                            unit="percent",
+                            resets_at=(base + timedelta(hours=5)).isoformat(),
+                            extra={"limit_window_seconds": 18000, "allowed": True},
+                        )
+                    ],
+                ),
+                _snapshot(
+                    provider="codex",
+                    recorded_at=(base + timedelta(minutes=1)).isoformat(),
+                    metrics=[
+                        UsageMetric(
+                            key="primary_window",
+                            label="Primary window",
+                            percent_value=10.0,
+                            unit="percent",
+                            resets_at=(base + timedelta(hours=5, minutes=1)).isoformat(),
+                            extra={"limit_window_seconds": 18000, "allowed": True},
+                        )
+                    ],
+                ),
+            ]
+        )
+
+        db = self.make_db()
+        service = UsageMonitorService(db, _DummySecretBox())
+        _enable_provider(db, "codex")
+
+        async def fake_collect_usage(config, secret_value):
+            return CollectionResult(snapshot=snapshots.popleft())
+
+        with _patched_collect(fake_collect_usage):
+            initial = await service.run_once(provider="codex")
+            second = await service.run_once(provider="codex")
+
+        self.assertEqual(initial[0]["reason"], "initial")
+        self.assertEqual(second[0]["reason"], "unchanged")
+
+        with db.connect() as conn:
+            self.assertEqual(
+                conn.execute("SELECT COUNT(*) FROM snapshots WHERE provider = 'codex'").fetchone()[0],
+                1,
+            )
+            current = conn.execute(
+                """
+                SELECT recorded_at, window_ends_at
+                FROM current_metrics
+                WHERE provider = ? AND metric_key = ?
+                """,
+                ("codex", "primary_window"),
+            ).fetchone()
+
+        self.assertEqual(current["recorded_at"], (base + timedelta(minutes=1)).isoformat())
+        self.assertEqual(current["window_ends_at"], (base + timedelta(hours=5, minutes=1)).isoformat())
+
+    async def test_raw_payloads_are_logged_to_file_and_not_stored_in_db(self) -> None:
+        base = datetime.now(timezone.utc)
+        db = self.make_db()
+        service = UsageMonitorService(db, _DummySecretBox())
+        _enable_provider(db, "codex")
+
+        stale_log = db.raw_payload_dir / "codex-2000-01-01.ndjson"
+        stale_log.parent.mkdir(parents=True, exist_ok=True)
+        stale_log.write_text("old\n", encoding="utf-8")
+        old_time = (datetime.now(timezone.utc) - timedelta(days=2)).timestamp()
+        os.utime(stale_log, (old_time, old_time))
+
+        snapshots = deque(
+            [
+                _snapshot(
+                    provider="codex",
+                    recorded_at=base.isoformat(),
+                    raw_text='{"hello":"world"}',
+                    normalized={"hello": "world"},
+                    metrics=[_percent_metric("primary_window", "Primary window", 10.0, "2026-03-22T12:00:00+00:00")],
+                )
+            ]
+        )
+
+        async def fake_collect_usage(config, secret_value):
+            return CollectionResult(snapshot=snapshots.popleft())
+
+        with _patched_collect(fake_collect_usage):
+            await service.run_once(provider="codex")
+
+        with db.connect() as conn:
+            row = conn.execute(
+                """
+                SELECT raw_text, normalized_json, capture_json
+                FROM snapshots
+                WHERE provider = 'codex'
+                ORDER BY id DESC
+                LIMIT 1
+                """
+            ).fetchone()
+
+        self.assertIsNone(row["raw_text"])
+        self.assertEqual(row["normalized_json"], "{}")
+        self.assertEqual(row["capture_json"], "{}")
+
+        log_files = sorted(db.raw_payload_dir.glob("codex-*.ndjson"))
+        self.assertEqual(len(log_files), 1)
+        entry = json.loads(log_files[0].read_text(encoding="utf-8").strip())
+        self.assertEqual(entry["provider"], "codex")
+        self.assertEqual(entry["raw_text"], '{"hello":"world"}')
+        self.assertEqual(entry["normalized"], {"hello": "world"})
+        self.assertFalse(stale_log.exists())
 
     async def test_auto_refresh_interval_steps_up_after_each_ten_minutes_unchanged(self) -> None:
         base = datetime.now(timezone.utc)

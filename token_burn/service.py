@@ -102,6 +102,8 @@ class UsageMonitorService:
         self,
         metrics: list[UsageMetric],
         current_metrics: dict[str, dict[str, Any]],
+        *,
+        recorded_at: str,
     ) -> list[UsageMetric]:
         metrics_to_persist: list[UsageMetric] = []
         for metric in metrics:
@@ -109,25 +111,25 @@ class UsageMonitorService:
             if previous is None:
                 metrics_to_persist.append(metric)
                 continue
-            if self._metric_changed(metric, previous):
+            if self._metric_changed(metric, previous, recorded_at=recorded_at):
                 metrics_to_persist.append(metric)
                 continue
             if self._metric_heartbeat_due(previous.get("recorded_at")):
                 metrics_to_persist.append(metric)
         return metrics_to_persist
 
-    def _metric_changed(self, metric: UsageMetric, previous: dict[str, Any]) -> bool:
-        previous_payload = {
-            "metric_key": previous.get("metric_key"),
-            "label": previous.get("label"),
-            "unit": previous.get("unit"),
-            "window_ends_at": previous.get("window_ends_at"),
-            "percent_value": previous.get("percent_value"),
-            "used_value": previous.get("used_value"),
-            "limit_value": previous.get("limit_value"),
-            "stable_extra": self._normalize_extra(previous.get("stable_extra")),
-        }
-        return metric.canonical_value() != previous_payload
+    def _metric_changed(self, metric: UsageMetric, previous: dict[str, Any], *, recorded_at: str) -> bool:
+        previous_metric = UsageMetric(
+            key=str(previous.get("metric_key") or metric.key),
+            label=str(previous.get("label") or metric.label),
+            percent_value=previous.get("percent_value"),
+            used_value=previous.get("used_value"),
+            limit_value=previous.get("limit_value"),
+            unit=previous.get("unit"),
+            resets_at=previous.get("window_ends_at"),
+            extra=self._normalize_extra(previous.get("stable_extra")),
+        )
+        return metric.canonical_value(recorded_at) != previous_metric.canonical_value(previous.get("recorded_at"))
 
     def _normalize_extra(self, value: Any) -> dict[str, Any]:
         if isinstance(value, dict):
@@ -175,6 +177,7 @@ class UsageMonitorService:
             metrics_to_persist = self._metrics_to_persist(
                 snapshot.metrics,
                 current_metrics,
+                recorded_at=snapshot.recorded_at,
             )
             metadata_changed = previous_event.get("plan_name") != snapshot.plan_name
             removed_metrics = set(current_metrics) - {metric.key for metric in snapshot.metrics}
@@ -189,14 +192,21 @@ class UsageMonitorService:
                 reason = "heartbeat"
 
             recorded_snapshot_at = None
+            event_id: int | None = None
             if reason:
-                self.db.persist_provider_event(
+                event_id = self.db.persist_provider_event(
                     snapshot,
                     reason=reason,
                     state_hash=state_hash,
                     metrics_to_persist=metrics_to_persist,
                 )
                 recorded_snapshot_at = snapshot.recorded_at
+
+            self.db.sync_current_metrics(
+                snapshot,
+                event_id=event_id,
+                persisted_metric_keys={metric.key for metric in metrics_to_persist},
+            )
 
             current_interval_seconds, unchanged_since_at = self._next_refresh_strategy(
                 refresh_mode=refresh_mode,

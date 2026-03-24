@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from hashlib import sha256
 import json
 from typing import Any
@@ -49,6 +50,23 @@ class UsageMetric:
     def window_ends_at(self) -> str | None:
         return self.resets_at
 
+    def canonical_window_ends_at(self, recorded_at: str | None = None) -> str | None:
+        normalized_reset = _normalize_iso_timestamp(self.resets_at)
+        if not normalized_reset:
+            return None
+
+        limit_window_seconds = _float_or_none(self.extra.get("limit_window_seconds"))
+        normalized_recorded = _normalize_iso_timestamp(recorded_at)
+        if limit_window_seconds is None or not normalized_recorded:
+            return normalized_reset
+
+        reset_dt = datetime.fromisoformat(normalized_reset)
+        recorded_dt = datetime.fromisoformat(normalized_recorded)
+        window_span = (reset_dt - recorded_dt).total_seconds()
+        if abs(window_span - limit_window_seconds) <= 5:
+            return None
+        return normalized_reset
+
     def stable_extra(self) -> dict[str, Any]:
         stable = {}
         for key, value in self.extra.items():
@@ -57,20 +75,20 @@ class UsageMetric:
             stable[str(key)] = value
         return stable
 
-    def canonical_value(self) -> dict[str, Any]:
+    def canonical_value(self, recorded_at: str | None = None) -> dict[str, Any]:
         return {
             "metric_key": self.key,
             "label": self.label,
             "unit": self.unit,
-            "window_ends_at": self.window_ends_at,
+            "window_ends_at": self.canonical_window_ends_at(recorded_at),
             "percent_value": self.percent_value,
             "used_value": self.used_value,
             "limit_value": self.limit_value,
             "stable_extra": self.stable_extra(),
         }
 
-    def state_item(self) -> dict[str, Any]:
-        return self.canonical_value()
+    def state_item(self, recorded_at: str | None = None) -> dict[str, Any]:
+        return self.canonical_value(recorded_at)
 
 
 @dataclass
@@ -87,7 +105,7 @@ class UsageSnapshot:
 
     def canonical_metrics(self) -> list[dict[str, Any]]:
         return sorted(
-            (metric.state_item() for metric in self.metrics),
+            (metric.state_item(self.recorded_at) for metric in self.metrics),
             key=lambda item: (
                 item["metric_key"],
                 item.get("window_ends_at") or "",
@@ -119,3 +137,24 @@ class UsageSnapshot:
 class CollectionResult:
     snapshot: UsageSnapshot
     updated_secret_value: str | None = None
+
+
+def _normalize_iso_timestamp(value: str | None) -> str | None:
+    if not value:
+        return None
+    try:
+        timestamp = datetime.fromisoformat(value)
+    except ValueError:
+        return value
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.replace(tzinfo=timezone.utc)
+    return timestamp.astimezone(timezone.utc).replace(microsecond=0).isoformat()
+
+
+def _float_or_none(value: Any) -> float | None:
+    try:
+        if value is None:
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
