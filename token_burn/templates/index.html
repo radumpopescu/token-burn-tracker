@@ -1308,6 +1308,7 @@
         default: ["#7ce38b", "#b8f2e6", "#c38cff", "#ffd166"],
     };
     const dashboardStorageKey = "token-burn.dashboard.preferences.v6";
+    const dashboardDataCacheKey = "token-burn.dashboard.history-cache.v1";
     const providerPeriodOptions = [
         { value: "1h", label: "1h" },
         { value: "5h", label: "5h" },
@@ -1379,6 +1380,55 @@
         if (Array.isArray(stored.hiddenUsageKeys)) {
             hiddenUsageKeys = new Set(stored.hiddenUsageKeys.filter((value) => typeof value === "string"));
         }
+    }
+
+    function readDashboardHistoryCache() {
+        try {
+            const raw = window.localStorage.getItem(dashboardDataCacheKey);
+            if (!raw) return null;
+            const parsed = JSON.parse(raw);
+            if (!parsed || typeof parsed !== "object" || !parsed.data || typeof parsed.data !== "object") return null;
+            return parsed;
+        } catch {
+            return null;
+        }
+    }
+
+    function writeDashboardHistoryCache(query, data) {
+        try {
+            window.localStorage.setItem(dashboardDataCacheKey, JSON.stringify({
+                query,
+                saved_at: new Date().toISOString(),
+                data: {
+                    provider_order: Array.isArray(data.provider_order) ? data.provider_order : providerOrder,
+                    refresh_settings: data.refresh_settings || refreshSettings,
+                    metric_labels: data.metric_labels || metricLabels,
+                    latest: data.latest || {},
+                    states: data.states || {},
+                    series: Array.isArray(data.series) ? data.series : [],
+                    filters: data.filters || null,
+                },
+            }));
+        } catch {}
+    }
+
+    function applyHistoryPayload(data) {
+        providerOrder = Array.isArray(data.provider_order) && data.provider_order.length ? data.provider_order : providerOrder;
+        refreshSettings = data.refresh_settings || refreshSettings;
+        metricLabels = data.metric_labels || {};
+        latestUsage = data.latest || {};
+        latestStates = data.states || {};
+        latestSeries = Array.isArray(data.series) ? data.series : [];
+        currentRangeEndAt = data.filters ? data.filters.end_at : null;
+        renderProviderSections();
+    }
+
+    function hydrateDashboardFromCache(query, { strictQuery = false } = {}) {
+        const cached = readDashboardHistoryCache();
+        if (!cached || !cached.data) return false;
+        if (strictQuery && cached.query && cached.query !== query) return false;
+        applyHistoryPayload(cached.data);
+        return true;
     }
 
     function providerPeriod(provider) {
@@ -2201,26 +2251,23 @@
 
     async function loadData(pushState = false) {
         const loadToken = ++activeLoadToken;
+        const query = buildQuery();
         if (pushState) history.replaceState({}, "", "/");
         if (refreshTimeoutId !== null) clearTimeout(refreshTimeoutId);
         nextRefreshAt = null;
         latestRefreshError = "";
+        if (pushState) hydrateDashboardFromCache(query, { strictQuery: true });
 
         const previousStates = latestStates;
         const previousEarliestCheck = earliestProviderCheck(previousStates);
         try {
-            const response = await fetch(`/api/history?${buildQuery()}`);
+            const response = await fetch(`/api/history?${query}`);
             if (!response.ok) throw new Error(`Refresh failed (${response.status})`);
             const data = await response.json();
             if (loadToken !== activeLoadToken) return;
 
-            providerOrder = Array.isArray(data.provider_order) && data.provider_order.length ? data.provider_order : providerOrder;
-            refreshSettings = data.refresh_settings || refreshSettings;
-            metricLabels = data.metric_labels || {};
-            latestUsage = data.latest || {};
-            latestStates = data.states || {};
-            latestSeries = data.series || [];
-            currentRangeEndAt = data.filters ? data.filters.end_at : null;
+            applyHistoryPayload(data);
+            writeDashboardHistoryCache(query, data);
 
             const backendAdvanced = providersAdvanced(previousStates, latestStates);
             const overdue = Boolean(
@@ -2231,8 +2278,6 @@
             pendingBackendRefreshRetry = overdue && pendingBackendRefreshRetries < 3;
             if (backendAdvanced || !overdue) pendingBackendRefreshRetries = 0;
             else if (pendingBackendRefreshRetry) pendingBackendRefreshRetries += 1;
-
-            renderProviderSections();
         } catch (error) {
             if (loadToken !== activeLoadToken) return;
             latestRefreshError = error instanceof Error ? error.message : "Refresh failed";
@@ -2243,6 +2288,7 @@
     }
 
     applyStoredDashboardPreferences();
+    hydrateDashboardFromCache(buildQuery());
     startRefreshTicker();
     loadData(true);
     </script>
