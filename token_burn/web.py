@@ -78,6 +78,20 @@ async def dashboard(
     states = db.get_provider_states()
     filters = _resolve_range(period=period, start=start, end=end)
     settings = db.get_app_settings()
+    metric_labels = _parse_metric_labels(settings.get("metric_labels", "{}"))
+    initial_history_payload = {
+        "filters": filters,
+        "refresh_settings": _refresh_settings(settings),
+        "metric_labels": metric_labels,
+        "latest": latest,
+        "states": states,
+        "series": db.list_metric_series(
+            provider=provider,
+            start_at=filters["start_at"],
+            end_at=filters["end_at"],
+        ),
+        "provider_order": _dashboard_provider_order(settings),
+    }
     return templates.TemplateResponse(
         "index.html",
         {
@@ -98,6 +112,7 @@ async def dashboard(
             ),
             "refresh_settings": _refresh_settings(settings),
             "provider_order": _dashboard_provider_order(settings),
+            "initial_history_payload": initial_history_payload,
         },
     )
 

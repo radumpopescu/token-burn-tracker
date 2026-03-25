@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Token Burn Monitor</title>
-    <script src="https://cdn.jsdelivr.net/npm/apexcharts@4.7.0/dist/apexcharts.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/apexcharts@4.7.0/dist/apexcharts.min.js"></script>
     <style>
         :root {
             --bg: #07121f;
@@ -1309,6 +1309,7 @@
     };
     const dashboardStorageKey = "token-burn.dashboard.preferences.v6";
     const dashboardDataCacheKey = "token-burn.dashboard.history-cache.v1";
+    const initialHistoryPayload = {{ initial_history_payload|tojson }};
     const providerPeriodOptions = [
         { value: "1h", label: "1h" },
         { value: "5h", label: "5h" },
@@ -1340,6 +1341,7 @@
     let latestSeries = [];
     let metricLabels = {};
     let refreshModeRequests = new Set();
+    let chartLibraryRetryId = null;
 
     function getStoredDashboardPreferences() {
         try {
@@ -1421,6 +1423,22 @@
         latestSeries = Array.isArray(data.series) ? data.series : [];
         currentRangeEndAt = data.filters ? data.filters.end_at : null;
         renderProviderSections();
+    }
+
+    function chartLibraryReady() {
+        return typeof window.ApexCharts === "function";
+    }
+
+    function ensureChartLibraryRenderSoon() {
+        if (chartLibraryRetryId !== null || chartLibraryReady()) return;
+        chartLibraryRetryId = window.setTimeout(() => {
+            chartLibraryRetryId = null;
+            if (!chartLibraryReady()) {
+                ensureChartLibraryRenderSoon();
+                return;
+            }
+            renderProviderCharts();
+        }, 60);
     }
 
     function hydrateDashboardFromCache(query, { strictQuery = false } = {}) {
@@ -2218,6 +2236,10 @@
     function renderProviderCharts() {
         const rangeEndTs = chartTimeValue(currentRangeEndAt) || Date.now();
         providerDatasets = buildProviderDatasets(latestSeries, rangeEndTs);
+        if (!chartLibraryReady()) {
+            ensureChartLibraryRenderSoon();
+            return;
+        }
         providerOrder.forEach((provider) => renderProviderChart(provider, rangeEndTs));
         renderAllSeriesChips();
     }
@@ -2288,7 +2310,10 @@
     }
 
     applyStoredDashboardPreferences();
-    hydrateDashboardFromCache(buildQuery());
+    applyHistoryPayload(initialHistoryPayload);
+    if (!latestUsage || !Object.keys(latestUsage).length) {
+        hydrateDashboardFromCache(buildQuery());
+    }
     startRefreshTicker();
     loadData(true);
     </script>
