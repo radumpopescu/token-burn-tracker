@@ -78,19 +78,19 @@
             border-color: rgba(255,122,24,0.55); color: #180d03; font-weight: 700;
         }
         .provider-sections {
-            display: grid; gap: 18px;
+            display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: start;
         }
         .provider-dashboard {
-            padding: 16px;
+            padding: 16px; display: grid; gap: 14px;
         }
         .provider-dashboard-header {
-            display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 14px;
+            display: grid; gap: 10px; margin-bottom: 0;
         }
         .provider-dashboard-copy {
             display: grid; gap: 4px;
         }
         .provider-status-card {
-            min-width: 320px; display: grid; gap: 8px; padding: 10px 12px; border-radius: 14px;
+            min-width: 0; display: grid; gap: 6px; padding: 9px 11px; border-radius: 14px;
             border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03);
         }
         .provider-status-card.has-error {
@@ -129,10 +129,10 @@
             opacity: 0.6; cursor: progress;
         }
         .provider-summary {
-            display: grid; gap: 12px; margin-bottom: 14px;
+            display: grid; gap: 10px; margin-bottom: 0;
         }
         .provider-chart-header {
-            display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px;
+            display: grid; gap: 8px; margin-bottom: 10px;
         }
         .provider-chart-title {
             display: grid; gap: 3px;
@@ -178,7 +178,7 @@
             font-size: 0.98rem; font-weight: 700; letter-spacing: -0.02em; margin: 0;
         }
         .provider-panel-subtitle {
-            margin: 3px 0 0; color: var(--muted); font-size: 0.74rem;
+            margin: 0; color: var(--muted); font-size: 0.74rem;
         }
         .provider-panel-actions { display: flex; gap: 8px; flex-wrap: wrap; }
         .provider-panel-btn {
@@ -202,11 +202,11 @@
             display: none;
         }
         .usage-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px;
+            display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;
         }
         .usage-item {
             background: rgba(15,30,49,0.86); border: 1px solid var(--line);
-            border-radius: 12px; padding: 10px 11px;
+            border-radius: 12px; padding: 12px;
         }
         .provider-panel.claude .usage-item { border-color: rgba(255,122,24,0.16); }
         .provider-panel.codex .usage-item { border-color: rgba(49,196,255,0.16); }
@@ -214,15 +214,12 @@
             display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 3px;
         }
         .usage-item-label { font-size: 0.78rem; color: var(--text); font-weight: 600; }
-        .usage-item-actions {
-            display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0;
+        .usage-item-subtle {
+            font-size: 0.68rem; color: var(--muted); margin-top: 3px;
         }
-        .usage-item-hide {
-            display: inline-flex; align-items: center; justify-content: center;
-            min-height: 24px; padding: 0 8px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.1);
-            background: rgba(255,255,255,0.03); color: var(--muted); font-size: 0.68rem; cursor: pointer;
+        .usage-item-pct {
+            font-size: 1.35rem; color: var(--text); font-weight: 700; letter-spacing: -0.03em; margin-bottom: 8px;
         }
-        .usage-item-pct { font-size: 0.74rem; color: var(--muted); font-weight: 600; margin-bottom: 5px; }
         .usage-bar-track { height: 7px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; }
         .usage-bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
         .usage-bar-fill.low { background: var(--accent-2); }
@@ -231,6 +228,29 @@
         .usage-item-footer {
             display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-top: 5px;
             font-size: 0.7rem; color: var(--muted);
+        }
+        .usage-item-details {
+            margin-top: 9px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 9px;
+        }
+        .usage-item-details summary {
+            cursor: pointer; list-style: none; color: var(--muted); font-size: 0.72rem;
+            display: inline-flex; align-items: center; gap: 6px;
+        }
+        .usage-item-details summary::-webkit-details-marker { display: none; }
+        .usage-item-details summary::after {
+            content: "+"; font-size: 0.85rem; color: var(--text); line-height: 1;
+        }
+        .usage-item-details[open] summary::after {
+            content: "–";
+        }
+        .usage-item-detail-grid {
+            display: grid; gap: 8px; margin-top: 10px;
+        }
+        .usage-item-detail-row {
+            display: flex; justify-content: space-between; gap: 12px; font-size: 0.72rem; color: var(--muted);
+        }
+        .usage-item-detail-row strong {
+            color: var(--text); font-weight: 600;
         }
         .usage-item-pace {
             margin-top: 8px; padding: 8px 9px; border-radius: 10px;
@@ -275,7 +295,7 @@
         /* Chart section */
         .chart-section {
             background: rgba(15,30,49,0.86); border: 1px solid var(--line);
-            border-radius: 16px; padding: 16px; margin-bottom: 20px;
+            border-radius: 16px; padding: 16px; margin-bottom: 0;
         }
         .chart-section h2 { margin: 0 0 10px; font-size: 0.95rem; }
 
@@ -318,9 +338,7 @@
             min-height: 28px; padding: 0 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.12);
             background: rgba(255,255,255,0.04); color: var(--text); font-size: 0.72rem; cursor: pointer;
         }
-        .series-group-chips {
-            display: flex; flex-wrap: wrap; gap: 6px;
-        }
+        .series-group-chips { display: none; }
         .series-chip {
             display: inline-flex; align-items: center; gap: 5px;
             padding: 4px 10px; border-radius: 8px; font-size: 0.75rem;
@@ -381,12 +399,16 @@
             to { transform: rotate(360deg); }
         }
 
+        @media (max-width: 960px) {
+            .provider-sections { grid-template-columns: 1fr; }
+        }
+
         @media (max-width: 760px) {
             .page { padding: 14px 12px 32px; }
             .topbar { flex-direction: column; align-items: flex-start; }
             .topbar-left { flex-wrap: wrap; }
             .provider-columns { grid-template-columns: 1fr; }
-            .provider-dashboard-header { flex-direction: column; align-items: stretch; }
+            .provider-dashboard-header { gap: 8px; }
             .provider-status-card { min-width: 0; width: 100%; }
             .usage-grid { grid-template-columns: 1fr; }
             .series-toggles { grid-template-columns: 1fr; }
@@ -1695,6 +1717,71 @@
         };
     }
 
+    function simplifiedMetricTitle(group) {
+        if (group === "session") return "5h window";
+        if (group === "weekly") return "7d window";
+        return "Usage";
+    }
+
+    function metricPreferenceRank(provider, metricKey, group) {
+        const key = String(metricKey || "").toLowerCase();
+        if (provider === "claude") {
+            if (group === "session" && key === "five_hour_utilization") return 0;
+            if (group === "weekly" && key === "seven_day_utilization") return 0;
+        }
+        if (provider === "codex") {
+            if (group === "session" && key === "primary_window") return 0;
+            if (group === "weekly" && key === "secondary_window") return 0;
+        }
+        if (group === "session" || group === "weekly") return 10;
+        return 99;
+    }
+
+    function selectSimplifiedMetrics(provider, metrics) {
+        const bestByGroup = {};
+        (metrics || []).forEach((metric) => {
+            const classification = classifyMetric(provider, metric.metric_key, metric.label, metric.resets_at);
+            if (!["session", "weekly"].includes(classification.group)) return;
+            let pct = metric.percent_value;
+            if ((pct === null || pct === undefined) && metric.used_value !== null && metric.limit_value) {
+                pct = (metric.used_value / metric.limit_value) * 100;
+            }
+            if (pct === null || pct === undefined || Number.isNaN(pct)) return;
+            const item = {
+                key: `${provider}:${metric.metric_key}`,
+                metric_key: metric.metric_key,
+                label: metricLabels[metric.metric_key] || metric.label,
+                original_label: metric.label,
+                pct: Math.max(0, Math.min(100, pct)),
+                resets_at: metric.resets_at,
+                used: metric.used_value,
+                limit: metric.limit_value,
+                unit: metric.unit,
+                extra: metric.extra || {},
+                group: classification.group,
+                title: simplifiedMetricTitle(classification.group),
+                rank: metricPreferenceRank(provider, metric.metric_key, classification.group),
+            };
+            const current = bestByGroup[classification.group];
+            if (!current || item.rank < current.rank || (item.rank === current.rank && item.label.localeCompare(current.label) < 0)) {
+                bestByGroup[classification.group] = item;
+            }
+        });
+        return ["session", "weekly"]
+            .map((group) => bestByGroup[group])
+            .filter(Boolean)
+            .filter((item) => !hiddenUsageKeys.has(item.key));
+    }
+
+    function simplifiedMetricKeysForProvider(provider) {
+        const snapshot = latestUsage[provider];
+        const selected = selectSimplifiedMetrics(provider, (snapshot && snapshot.metrics) || []);
+        if (selected.length) return new Set(selected.map((item) => item.metric_key));
+        if (provider === "claude") return new Set(["five_hour_utilization", "seven_day_utilization"]);
+        if (provider === "codex") return new Set(["primary_window", "secondary_window"]);
+        return new Set();
+    }
+
     function hideUsageMetric(metricKey) {
         hiddenUsageKeys.add(metricKey);
         hiddenSeriesKeys.add(metricKey);
@@ -1753,90 +1840,49 @@
         if (!snapshot || !Array.isArray(snapshot.metrics) || !snapshot.metrics.length) {
             return '<div class="provider-panel-empty">No usage data yet for this provider. Add its request import in Settings to start tracking it.</div>';
         }
+        const visibleMetrics = selectSimplifiedMetrics(provider, snapshot.metrics);
+        if (!visibleMetrics.length) {
+            return '<div class="provider-panel-empty">Everything in this provider is hidden right now.</div>';
+        }
 
-        const groups = {};
-        snapshot.metrics.forEach((metric) => {
-            let pct = metric.percent_value;
-            if ((pct === null || pct === undefined) && metric.used_value !== null && metric.limit_value) {
-                pct = (metric.used_value / metric.limit_value) * 100;
-            }
-            if (pct === null || pct === undefined || Number.isNaN(pct)) return;
-            const classification = classifyMetric(provider, metric.metric_key, metric.label, metric.resets_at);
-            const item = {
-                key: `${provider}:${metric.metric_key}`,
-                metric_key: metric.metric_key,
-                label: metricLabels[metric.metric_key] || metric.label,
-                pct: Math.max(0, Math.min(100, pct)),
-                resets_at: metric.resets_at,
-                used: metric.used_value,
-                limit: metric.limit_value,
-                unit: metric.unit,
-                extra: metric.extra || {},
-                ...classification,
-            };
-            const group = groups[item.group] || {
-                title: item.title,
-                order: item.order,
-                items: [],
-            };
-            group.items.push(item);
-            groups[item.group] = group;
-        });
-
-        const totalCount = Object.values(groups).reduce((count, group) => count + group.items.length, 0);
-        const hiddenCount = Object.values(groups).reduce(
-            (count, group) => count + group.items.filter((item) => hiddenUsageKeys.has(item.key)).length,
-            0,
-        );
-        const visibleCount = totalCount - hiddenCount;
-        const renderedGroups = Object.values(groups)
-            .sort((a, b) => a.order - b.order)
-            .map((group) => {
-                const visibleItems = group.items.filter((item) => !hiddenUsageKeys.has(item.key));
-                if (!visibleItems.length) return "";
-                const cards = visibleItems.map((item) => {
-                    const reset = item.resets_at ? `Resets ${fmtRelative(item.resets_at)} (${fmtDuration(item.resets_at)})` : "";
-                    const amount = (item.used !== null && item.used !== undefined && item.limit)
-                        ? `${Number.isInteger(item.used) ? item.used : item.used.toFixed(1)}/${Number.isInteger(item.limit) ? item.limit : item.limit.toFixed(1)}${item.unit && item.unit !== "percent" ? " " + item.unit : ""}`
-                        : "";
-                    const pace = buildPaceInfo(item);
-                    const paceBlock = pace ? `<div class="usage-item-pace">
-                        <div class="pace-trend ${pace.trendClass}">${pace.trendLabel}</div>
-                        <div class="pace-stats"><span>Used ${pace.usedPct.toFixed(0)}%</span><span>${pace.headline}</span></div>
-                        <div class="pace-line">
-                            <div class="pace-line-elapsed" style="width:${pace.elapsedPct.toFixed(1)}%"></div>
-                            <div class="pace-line-used" style="width:${pace.usedPct.toFixed(1)}%"></div>
-                        </div>
-                        <div class="pace-caption"><strong>${pace.summary}</strong><span>${pace.detail}</span></div>
-                    </div>` : "";
-                    return `<div class="usage-item">
-                        <div class="usage-item-header">
-                            <span class="usage-item-label">${item.label}</span>
-                            <div class="usage-item-actions">
-                                <button type="button" class="usage-item-hide" onclick='hideUsageMetric(${JSON.stringify(item.key)})'>Hide</button>
-                            </div>
-                        </div>
-                        <div class="usage-item-pct">${item.pct.toFixed(1)}% used</div>
-                        <div class="usage-bar-track"><div class="usage-bar-fill ${barClass(item.pct)}" style="width:${item.pct}%"></div></div>
-                        <div class="usage-item-footer"><span>${amount}</span><span>${reset}</span></div>
+        const cards = visibleMetrics.map((item) => {
+            const reset = item.resets_at ? `Resets ${fmtRelative(item.resets_at)}` : "No reset reported";
+            const amount = (item.used !== null && item.used !== undefined && item.limit)
+                ? `${Number.isInteger(item.used) ? item.used : item.used.toFixed(1)} / ${Number.isInteger(item.limit) ? item.limit : item.limit.toFixed(1)}${item.unit && item.unit !== "percent" ? " " + item.unit : ""}`
+                : "Percent-only metric";
+            const pace = buildPaceInfo(item);
+            const paceBlock = pace ? `<div class="usage-item-pace">
+                <div class="pace-trend ${pace.trendClass}">${pace.trendLabel}</div>
+                <div class="pace-stats"><span>Used ${pace.usedPct.toFixed(0)}%</span><span>${pace.headline}</span></div>
+                <div class="pace-line">
+                    <div class="pace-line-elapsed" style="width:${pace.elapsedPct.toFixed(1)}%"></div>
+                    <div class="pace-line-used" style="width:${pace.usedPct.toFixed(1)}%"></div>
+                </div>
+                <div class="pace-caption"><strong>${pace.summary}</strong><span>${pace.detail}</span></div>
+            </div>` : '<div class="usage-item-detail-row"><span>Pacing</span><strong>Not available</strong></div>';
+            return `<article class="usage-item">
+                <div class="usage-item-header">
+                    <div>
+                        <div class="usage-item-label">${item.title}</div>
+                        <div class="usage-item-subtle">${item.label}</div>
+                    </div>
+                </div>
+                <div class="usage-item-pct">${item.pct.toFixed(0)}%</div>
+                <div class="usage-bar-track"><div class="usage-bar-fill ${barClass(item.pct)}" style="width:${item.pct}%"></div></div>
+                <div class="usage-item-footer"><span>${reset}</span></div>
+                <details class="usage-item-details">
+                    <summary>More</summary>
+                    <div class="usage-item-detail-grid">
+                        <div class="usage-item-detail-row"><span>Tracked metric</span><strong>${item.original_label || item.label}</strong></div>
+                        <div class="usage-item-detail-row"><span>Usage</span><strong>${amount}</strong></div>
+                        <div class="usage-item-detail-row"><span>Reset</span><strong>${item.resets_at ? fmtDuration(item.resets_at) : "Unknown"}</strong></div>
                         ${paceBlock}
-                    </div>`;
-                }).join("");
-                return `<div class="usage-group">
-                    <h3 class="usage-group-title">${group.title}</h3>
-                    <div class="usage-grid">${cards}</div>
-                </div>`;
-            })
-            .filter(Boolean)
-            .join("");
+                    </div>
+                </details>
+            </article>`;
+        }).join("");
 
-        return `<div class="provider-panel-actions">
-                ${visibleCount ? `<button type="button" class="provider-panel-btn" onclick="hideProviderItems('${provider}')">Hide all</button>` : ""}
-                ${hiddenCount ? `<button type="button" class="provider-panel-btn" onclick="showProviderItems('${provider}')">Show hidden (${hiddenCount})</button>` : ""}
-            </div>
-            <div class="provider-summary">
-                ${renderedGroups || '<div class="provider-panel-empty">Everything in this provider is hidden right now.</div>'}
-            </div>`;
+        return `<div class="provider-summary"><div class="usage-grid">${cards}</div></div>`;
     }
 
     function buildProviderSection(provider) {
@@ -1846,7 +1892,7 @@
                 <div class="provider-dashboard-copy">
                     <div class="provider-panel-kicker">Provider</div>
                     <h2 class="provider-panel-title">${providerDisplayName(provider)}</h2>
-                    <p class="provider-panel-subtitle">Current session and 7d progress on top, history below.</p>
+                    <p class="provider-panel-subtitle">Simple 5h and 7d usage, with extra detail tucked away.</p>
                 </div>
                 <div class="provider-status-card" data-provider-status="${provider}">
                     <div class="provider-status-top">
@@ -1867,12 +1913,10 @@
                 <div class="provider-chart-header">
                     <div class="provider-chart-title">
                         <strong>${providerDisplayName(provider)} history</strong>
-                        <span>Dense minute points keep hover tooltips complete between stored changes.</span>
+                        <span>Use the time filter to zoom the main 5h and 7d trends.</span>
                     </div>
-                    <button type="button" class="series-group-toggle" id="provider-series-toggle-${provider}" onclick="toggleProviderSeries('${provider}')">Hide all</button>
                 </div>
                 <div class="period-toggles" id="provider-period-toggles-${provider}"></div>
-                <div class="series-group-chips" id="provider-series-toggles-${provider}"></div>
                 <div class="chart-wrap">
                     <div id="provider-chart-${provider}"></div>
                     <div class="no-data-msg" id="provider-chart-empty-${provider}" style="display:none;">No history yet for ${providerDisplayName(provider)}.</div>
@@ -1974,6 +2018,8 @@
         const grouped = {};
         series.forEach((item) => {
             const provider = item.provider;
+            const allowedMetricKeys = simplifiedMetricKeysForProvider(provider);
+            if (allowedMetricKeys.size && !allowedMetricKeys.has(item.metric_key)) return;
             const rangeStartTs = rangeEndTs - chartPeriodToRangeMs(providerPeriod(provider));
             const rawPoints = item.points
                 .map((point) => {
