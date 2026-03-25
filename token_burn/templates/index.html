@@ -115,12 +115,14 @@
             font-size: 0.74rem; color: var(--muted);
         }
         .provider-status-controls {
-            display: flex; flex-wrap: wrap; gap: 6px;
+            display: inline-flex; align-items: center; gap: 0;
+            padding: 3px; border-radius: 999px; background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
         }
         .provider-mode-btn {
             display: inline-flex; align-items: center; justify-content: center;
-            min-height: 28px; padding: 0 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.1);
-            background: rgba(255,255,255,0.04); color: var(--text); font-size: 0.72rem; cursor: pointer;
+            min-height: 28px; min-width: 60px; padding: 0 12px; border-radius: 999px; border: 0;
+            background: transparent; color: var(--text); font-size: 0.72rem; cursor: pointer;
         }
         .provider-mode-btn.active {
             background: var(--provider-accent); border-color: transparent; color: #07121f; font-weight: 700;
@@ -1552,6 +1554,10 @@
         return ["auto", "1m", "10m"].includes(mode) ? mode : "auto";
     }
 
+    function providerRefreshButtonMode(state) {
+        return providerRefreshMode(state) === "10m" ? "10m" : "1m";
+    }
+
     function refreshModeButtonLabel(mode) {
         if (mode === "1m") return (refreshSettings && refreshSettings.fast_label) || "1m";
         if (mode === "10m") return (refreshSettings && refreshSettings.slow_label) || "10m";
@@ -1571,7 +1577,7 @@
     function providerModeLabel(state) {
         const mode = providerRefreshMode(state);
         const interval = providerIntervalSeconds(state);
-        if (mode === "auto") return `Auto · ${fmtShortDuration(interval)} cadence`;
+        if (mode === "auto") return `Adaptive · ${fmtShortDuration(interval)} cadence`;
         return `${fmtShortDuration(interval)} fixed`;
     }
 
@@ -1622,8 +1628,9 @@
                     : `Next backend check in ${fmtShortDuration(remainingSeconds)}`;
             }
             mode.textContent = providerModeLabel(state);
+            const buttonMode = providerRefreshButtonMode(state);
             root.querySelectorAll("[data-refresh-mode]").forEach((button) => {
-                button.classList.toggle("active", providerRefreshMode(state) === button.dataset.refreshMode);
+                button.classList.toggle("active", buttonMode === button.dataset.refreshMode);
                 button.disabled = refreshModeRequests.has(provider);
             });
         });
@@ -1970,7 +1977,6 @@
                     <div class="provider-status-line provider-status-next">Scheduling next check...</div>
                     <div class="provider-status-line provider-status-mode">${providerModeLabel(state)}</div>
                     <div class="provider-status-controls">
-                        <button type="button" class="provider-mode-btn" data-refresh-mode="auto" onclick="setProviderRefreshMode('${provider}', 'auto')">Auto</button>
                         <button type="button" class="provider-mode-btn" data-refresh-mode="1m" onclick="setProviderRefreshMode('${provider}', '1m')">${refreshModeButtonLabel("1m")}</button>
                         <button type="button" class="provider-mode-btn" data-refresh-mode="10m" onclick="setProviderRefreshMode('${provider}', '10m')">${refreshModeButtonLabel("10m")}</button>
                     </div>
